@@ -1,0 +1,651 @@
+openapi: 3.0.0
+info:
+  title: Carcassonne Game API
+  version: 3.0.0
+  description: >
+    Comprehensive REST API for Carcassonne game, where player identification is handled via JWT tokens.
+    This API supports all game operations including game creation, joining, tile placement, meeple placement,
+    and scoring.
+
+servers:
+  - url: https://api.example.com
+    description: Production server
+  - url: http://localhost:8080
+    description: Local development server
+
+############################################################
+# Global security scheme (BearerAuth for JWT)
+############################################################
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ########################################################
+    # Core entities (GameState, Tile, Player, etc.)
+    ########################################################
+
+    GameState:
+      type: object
+      description: Complete state of the game including board, players, current turn, and remaining cards
+      properties:
+        gameId:
+          type: string
+          description: Unique identifier for the game
+        board:
+          type: array
+          description: Array of tiles placed on the board
+          items:
+            $ref: '#/components/schemas/Tile'
+        players:
+          type: array
+          description: List of players in the game
+          items:
+            $ref: '#/components/schemas/Player'
+        currentPlayerId:
+          type: string
+          description: ID of the player whose turn it is
+        status:
+          type: string
+          description: Current game status
+          enum: [waiting, active, finished]
+        remainingCards:
+          type: integer
+          description: Number of cards remaining in the deck
+        currentTileId:
+          type: string
+          description: ID of the current tile to be placed (if drawn)
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          description: When the game was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the game was last updated
+
+    Tile:
+      type: object
+      description: Information about a placed tile
+      properties:
+        tileId:
+          type: string
+          description: Unique identifier for the tile
+        tileType:
+          type: string
+          description: Type of tile (e.g., city, road, monastery, field)
+        x:
+          type: integer
+          description: X-coordinate on the board
+        y:
+          type: integer
+          description: Y-coordinate on the board
+        rotation:
+          type: integer
+          description: Rotation angle (0, 90, 180, 270)
+        sides:
+          type: object
+          description: Description of each side of the tile
+          properties:
+            north:
+              type: string
+              enum: [city, road, field]
+            east:
+              type: string
+              enum: [city, road, field]
+            south:
+              type: string
+              enum: [city, road, field]
+            west:
+              type: string
+              enum: [city, road, field]
+        features:
+          type: array
+          description: Features on this tile (cities, roads, etc.)
+          items:
+            $ref: '#/components/schemas/TileFeature'
+        meeple:
+          type: object
+          description: Information about a placed meeple on this tile
+          nullable: true
+          properties:
+            playerId:
+              type: string
+              description: ID of the player who placed the meeple
+            position:
+              type: string
+              description: Position on the tile (e.g., "north", "center", "northeast")
+            featureId:
+              type: string
+              description: ID of the feature the meeple is placed on
+
+    TileFeature:
+      type: object
+      description: A feature on a tile (city, road, monastery, field)
+      properties:
+        featureId:
+          type: string
+          description: Unique identifier for this feature
+        featureType:
+          type: string
+          enum: [city, road, monastery, field]
+          description: Type of feature
+        sides:
+          type: array
+          description: Which sides of the tile this feature connects to
+          items:
+            type: string
+            enum: [north, east, south, west]
+        completed:
+          type: boolean
+          description: Whether this feature is completed
+        points:
+          type: integer
+          description: Points this feature is worth if completed
+          nullable: true
+
+    Player:
+      type: object
+      description: Player in the game
+      properties:
+        playerId:
+          type: string
+          description: Unique identifier for the player
+        name:
+          type: string
+          description: Player's display name
+        color:
+          type: string
+          description: Player's color
+        meeples:
+          type: integer
+          description: Number of meeples the player has left
+        score:
+          type: integer
+          description: Player's current score
+        isHost:
+          type: boolean
+          description: Whether this player is the host of the game
+
+    ErrorResponse:
+      type: object
+      description: Error response structure
+      properties:
+        errorCode:
+          type: string
+          description: Error code for programmatic handling
+        errorMessage:
+          type: string
+          description: Human-readable error message
+
+    ########################################################
+    # Requests and Responses
+    ########################################################
+
+    CreateGameRequest:
+      type: object
+      description: Request to create a new game
+      properties:
+        playerName:
+          type: string
+          description: Name of the player creating the game
+        gameOptions:
+          type: object
+          description: Optional game configuration
+          properties:
+            includeExpansions:
+              type: array
+              description: List of expansions to include
+              items:
+                type: string
+                enum: [base, inns_and_cathedrals, traders_and_builders]
+            maxPlayers:
+              type: integer
+              description: Maximum number of players allowed
+              minimum: 2
+              maximum: 6
+            timerSeconds:
+              type: integer
+              description: Time limit for turns in seconds (0 for no limit)
+
+    CreateGameResponse:
+      type: object
+      description: Response after creating a game
+      properties:
+        gameId:
+          type: string
+          description: ID of the created game
+        joinCode:
+          type: string
+          description: Code that other players can use to join the game
+        token:
+          type: string
+          description: JWT token for the host player
+        gameState:
+          $ref: '#/components/schemas/GameState'
+
+    JoinGameRequest:
+      type: object
+      description: Request to join an existing game
+      properties:
+        code:
+          type: string
+          description: Join code for the game
+        playerName:
+          type: string
+          description: Name of the player joining the game
+
+    JoinGameResponse:
+      type: object
+      description: Response after joining a game
+      properties:
+        token:
+          type: string
+          description: JWT token for the player
+        gameState:
+          $ref: '#/components/schemas/GameState'
+
+    TakeCardRequest:
+      type: object
+      description: Request to draw a card from the deck
+      properties:
+        gameId:
+          type: string
+          description: ID of the game
+
+    TakeCardResponse:
+      type: object
+      description: Response after drawing a card
+      properties:
+        tileId:
+          type: string
+          description: ID of the drawn tile
+        tileDetails:
+          $ref: '#/components/schemas/Tile'
+        updatedGameState:
+          $ref: '#/components/schemas/GameState'
+
+    PlaceTileRequest:
+      type: object
+      description: Request to place a tile on the board
+      properties:
+        tileId:
+          type: string
+          description: ID of the tile to place
+        x:
+          type: integer
+          description: X-coordinate on the board
+        y:
+          type: integer
+          description: Y-coordinate on the board
+        rotation:
+          type: integer
+          description: Rotation angle (0, 90, 180, 270)
+
+    PlaceMeepleRequest:
+      type: object
+      description: Request to place a meeple on a tile
+      properties:
+        tileId:
+          type: string
+          description: ID of the tile to place the meeple on
+        position:
+          type: string
+          description: Position on the tile (e.g., "north", "center", "northeast")
+        featureId:
+          type: string
+          description: ID of the feature to place the meeple on
+
+    EndTurnRequest:
+      type: object
+      description: Request to end the current player's turn
+      properties:
+        gameId:
+          type: string
+          description: ID of the game
+
+    ScoreUpdateResponse:
+      type: object
+      description: Response containing score updates after a turn
+      properties:
+        scoreUpdates:
+          type: array
+          items:
+            type: object
+            properties:
+              playerId:
+                type: string
+                description: ID of the player
+              points:
+                type: integer
+                description: Points earned in this update
+              feature:
+                type: object
+                properties:
+                  featureType:
+                    type: string
+                    enum: [city, road, monastery, field]
+                  completed:
+                    type: boolean
+        updatedGameState:
+          $ref: '#/components/schemas/GameState'
+
+############################################################
+# API Endpoints
+############################################################
+paths:
+  ############################################################
+  # Game Creation and Management
+  ############################################################
+  /game:
+    post:
+      summary: Create a new game
+      description: Creates a new game and returns a game ID and join code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '200':
+          description: Game successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGameResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /game/{gameId}:
+    get:
+      summary: Get game state
+      description: Returns the current state of the game
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Game state successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ############################################################
+  # Player Registration
+  ############################################################
+  /game/{gameId}/join:
+    post:
+      summary: Join an existing game
+      description: Allows a player to join a game using a join code
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinGameRequest'
+      responses:
+        '200':
+          description: Successfully joined the game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinGameResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ############################################################
+  # Game Start
+  ############################################################
+  /game/{gameId}/start:
+    post:
+      summary: Start the game
+      description: Initializes the game state, shuffles the deck, and assigns the first player
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Game successfully started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          description: Game already started or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only the host can start the game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  ############################################################
+  # Game Actions
+  ############################################################
+  /game/takeCard:
+    post:
+      summary: Draw a card from the deck
+      description: Draws a new tile from the deck for the current player
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TakeCardRequest'
+      responses:
+        '200':
+          description: Card successfully drawn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TakeCardResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not the player's turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game or player not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /game/{gameId}/placeTile:
+    post:
+      summary: Place a tile on the board
+      description: Places the current tile on the board at the specified position
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceTileRequest'
+      responses:
+        '200':
+          description: Tile successfully placed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          description: Invalid tile placement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not the player's turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game or tile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /game/{gameId}/placeMeeple:
+    post:
+      summary: Place a meeple on a tile
+      description: Places a meeple on a recently placed tile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceMeepleRequest'
+      responses:
+        '200':
+          description: Meeple successfully placed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          description: Invalid meeple placement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not the player's turn or no meeples left
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game or tile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /game/{gameId}/endTurn:
+    post:
+      summary: End the current player's turn
+      description: Completes the current player's turn and moves to the next player
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: ID of the game
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EndTurnRequest'
+      responses:
+        '200':
+          description: Turn successfully ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreUpdateResponse'
+        '400':
+          description: Invalid request or tile not placed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not the player's turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

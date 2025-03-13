@@ -1,0 +1,13 @@
+# Ignore existing implementation files
+src/main/kotlin/org/example/App.kt
+src/main/kotlin/org/example/GameRoutes.kt
+
+# Ignore test files
+src/test/**/*
+
+# Ignore resources
+src/main/resources/**/*
+
+# Ignore existing model implementations
+# Comment out this line if you want to use generated models
+src/main/kotlin/org/example/GameModels.kt
