@@ -2,11 +2,14 @@ package org.example.database.dao
 
 import org.example.database.tables.*
 import org.example.model.*
+import org.example.model.generated.GameState
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -37,18 +40,30 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
         val mapper = ObjectMapper()
         val expansionsList = mapper.readValue<List<String>>(expansions)
         
-        return GameState(
-            gameId = id.value.toString(),
-            status = status,
-            board = tiles.filter { it.isPlaced }.map { it.toTile() },
-            players = players.map { it.toPlayer() },
-            currentPlayerId = currentPlayerId,
-            remainingCards = remainingCards,
-            currentTileId = currentTileId,
-            createdAt = createdAt.toString(),
-            updatedAt = updatedAt.toString(),
-            expansions = expansionsList
-        )
+        val gameState = GameState()
+        gameState.gameId = id.value.toString()
+        gameState.status = when (status) {
+            "waiting" -> GameState.Status.WAITING
+            "active" -> GameState.Status.ACTIVE
+            "finished" -> GameState.Status.FINISHED
+            else -> GameState.Status.WAITING
+        }
+        gameState.board = tiles.filter { it.isPlaced }.map { it.toTile() }.toMutableList()
+        gameState.players = players.map { it.toPlayer() }.toMutableList()
+        gameState.currentPlayerId = currentPlayerId
+        gameState.remainingCards = remainingCards
+        gameState.currentTileId = currentTileId
+        gameState.createdAt = createdAt?.toOffsetDateTime()
+        gameState.updatedAt = updatedAt?.toOffsetDateTime()
+        
+        return gameState
+    }
+    
+    /**
+     * Convert LocalDateTime to OffsetDateTime
+     */
+    private fun LocalDateTime.toOffsetDateTime(): OffsetDateTime {
+        return this.atOffset(ZoneOffset.UTC)
     }
 
     /**
@@ -290,7 +305,7 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
         val tile = TileDao.findById(tileId)
             ?: throw IllegalArgumentException("Tile not found")
         
-        if (tile.gameId.value != id.value) {
+        if (tile.gameId.toString() != id.toString()) {
             throw IllegalArgumentException("Tile does not belong to this game")
         }
         
@@ -409,7 +424,7 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
         val player = PlayerDao.findById(playerId)
             ?: throw IllegalArgumentException("Player not found")
         
-        if (player.gameId.value != id.value) {
+        if (player.gameId.toString() != id.toString()) {
             throw IllegalArgumentException("Player does not belong to this game")
         }
         
@@ -420,7 +435,7 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
         val tile = TileDao.findById(tileId)
             ?: throw IllegalArgumentException("Tile not found")
         
-        if (tile.gameId.value != id.value) {
+        if (tile.gameId.toString() != id.toString()) {
             throw IllegalArgumentException("Tile does not belong to this game")
         }
         
@@ -469,7 +484,7 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
     /**
      * End the current player's turn
      */
-    fun endTurn(): Pair<GameState, List<ScoreUpdate>> = transaction {
+    fun endTurn(): Pair<GameState, MutableList<org.example.model.generated.ScoreUpdateResponseScoreUpdatesInner>> = transaction {
         if (status != "active") {
             throw IllegalStateException("Game is not active")
         }
@@ -515,8 +530,8 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
     /**
      * Score completed features
      */
-    private fun scoreCompletedFeatures(): MutableList<ScoreUpdate> {
-        val scoreUpdates = mutableListOf<ScoreUpdate>()
+    private fun scoreCompletedFeatures(): MutableList<org.example.model.generated.ScoreUpdateResponseScoreUpdatesInner> {
+        val scoreUpdates = mutableListOf<org.example.model.generated.ScoreUpdateResponseScoreUpdatesInner>()
         
         // Find all features that might be completed by the last placed tile
         val lastPlacedTile = tiles.filter { it.isPlaced }.maxByOrNull { it.placedAt ?: LocalDateTime.MIN }
@@ -540,7 +555,7 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
     /**
      * Score a completed city
      */
-    private fun scoreCompletedCity(feature: TileFeatureDao, scoreUpdates: MutableList<ScoreUpdate>) {
+    private fun scoreCompletedCity(feature: TileFeatureDao, scoreUpdates: MutableList<org.example.model.generated.ScoreUpdateResponseScoreUpdatesInner>) {
         // Implementation of city scoring logic
         // This would involve checking if the city is completed, calculating points,
         // and updating player scores
@@ -549,39 +564,22 @@ class GameDao(id: EntityID<UUID>) : UUIDEntity(id) {
     /**
      * Score a completed road
      */
-    private fun scoreCompletedRoad(feature: TileFeatureDao, scoreUpdates: MutableList<ScoreUpdate>) {
+    private fun scoreCompletedRoad(feature: TileFeatureDao, scoreUpdates: MutableList<org.example.model.generated.ScoreUpdateResponseScoreUpdatesInner>) {
         // Implementation of road scoring logic
     }
     
     /**
      * Score a completed monastery
      */
-    private fun scoreCompletedMonastery(feature: TileFeatureDao, scoreUpdates: MutableList<ScoreUpdate>) {
+    private fun scoreCompletedMonastery(feature: TileFeatureDao, scoreUpdates: MutableList<org.example.model.generated.ScoreUpdateResponseScoreUpdatesInner>) {
         // Implementation of monastery scoring logic
     }
     
     /**
      * Score final features at the end of the game
      */
-    private fun scoreFinalFeatures(): List<ScoreUpdate> {
+    private fun scoreFinalFeatures(): List<org.example.model.generated.ScoreUpdateResponseScoreUpdatesInner> {
         // Implementation of final scoring logic
         return emptyList()
     }
 }
-
-/**
- * Score update data class
- */
-data class ScoreUpdate(
-    val playerId: String,
-    val points: Int,
-    val feature: FeatureScore
-)
-
-/**
- * Feature score data class
- */
-data class FeatureScore(
-    val featureType: String,
-    val completed: Boolean
-)

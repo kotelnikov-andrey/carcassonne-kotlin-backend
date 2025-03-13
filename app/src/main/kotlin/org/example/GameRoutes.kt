@@ -8,6 +8,8 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.auth.*
 import io.ktor.http.*
 import org.example.model.*
+import org.example.model.generated.*
+import org.example.model.ErrorResponse
 import org.example.service.GameService
 import org.slf4j.LoggerFactory
 

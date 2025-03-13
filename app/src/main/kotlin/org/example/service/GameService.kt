@@ -3,6 +3,7 @@ package org.example.service
 import org.example.database.dao.*
 import org.example.database.tables.PlayersTable
 import org.example.model.*
+import org.example.model.generated.*
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime
@@ -24,7 +25,7 @@ class GameService {
     /**
      * Create a new game
      */
-    fun createGame(request: CreateGameRequest): CreateGameResponse = transaction {
+    fun createGame(request: org.example.model.generated.CreateGameRequest): org.example.model.generated.CreateGameResponse = transaction {
         // Generate a unique game ID and join code
         val gameId = UUID.randomUUID()
         val joinCode = generateJoinCode()
@@ -41,24 +42,36 @@ class GameService {
             expansions = "[]" // Default to base game only
         }
 
+        // Convert game options if provided
+        val gameOptions = if (request.gameOptions != null) {
+            GameOptions(
+                includeExpansions = request.gameOptions?.includeExpansions?.map { it.toString() },
+                maxPlayers = request.gameOptions?.maxPlayers,
+                timerSeconds = request.gameOptions?.timerSeconds
+            )
+        } else {
+            null
+        }
+
         // Create the host player
-        val player = game.createGame(request.playerName, request.gameOptions).second
+        val player = game.createGame(request.playerName ?: "Player", gameOptions).second
 
         // Generate JWT token for the player
         val token = generateToken(player.id.value.toString(), game.id.value.toString(), true)
 
-        CreateGameResponse(
-            gameId = game.id.value.toString(),
-            joinCode = joinCode,
-            token = token,
-            gameState = game.toGameState()
-        )
+        val response = org.example.model.generated.CreateGameResponse()
+        response.gameId = game.id.value.toString()
+        response.joinCode = joinCode
+        response.token = token
+        response.gameState = game.toGameState()
+        
+        response
     }
 
     /**
      * Join an existing game
      */
-    fun joinGame(gameId: String, request: JoinGameRequest): JoinGameResponse = transaction {
+    fun joinGame(gameId: String, request: org.example.model.generated.JoinGameRequest): org.example.model.generated.JoinGameResponse = transaction {
         // Find the game
         val game = GameDao.findById(UUID.fromString(gameId))
             ?: throw IllegalArgumentException("Game not found")
@@ -74,21 +87,22 @@ class GameService {
         }
 
         // Add player to the game
-        val player = game.addPlayer(request.playerName)
+        val player = game.addPlayer(request.playerName ?: "Player")
 
         // Generate JWT token for the player
         val token = generateToken(player.id.value.toString(), game.id.value.toString(), false)
 
-        JoinGameResponse(
-            token = token,
-            gameState = game.toGameState()
-        )
+        val response = org.example.model.generated.JoinGameResponse()
+        response.token = token
+        response.gameState = game.toGameState()
+        
+        response
     }
 
     /**
      * Start a game
      */
-    fun startGame(gameId: String, playerId: String): GameState = transaction {
+    fun startGame(gameId: String, playerId: String): org.example.model.generated.GameState = transaction {
         // Find the game
         val game = GameDao.findById(UUID.fromString(gameId))
             ?: throw IllegalArgumentException("Game not found")
@@ -111,7 +125,7 @@ class GameService {
     /**
      * Get game state
      */
-    fun getGameState(gameId: String): GameState = transaction {
+    fun getGameState(gameId: String): org.example.model.generated.GameState = transaction {
         // Find the game
         val game = GameDao.findById(UUID.fromString(gameId))
             ?: throw IllegalArgumentException("Game not found")
@@ -122,9 +136,9 @@ class GameService {
     /**
      * Take a card from the deck
      */
-    fun takeCard(request: TakeCardRequest, playerId: String): TakeCardResponse = transaction {
+    fun takeCard(request: org.example.model.generated.TakeCardRequest, playerId: String): org.example.model.generated.TakeCardResponse = transaction {
         // Find the game
-        val game = GameDao.findById(UUID.fromString(request.gameId))
+        val game = GameDao.findById(UUID.fromString(request.gameId ?: ""))
             ?: throw IllegalArgumentException("Game not found")
 
         // Check if it's the player's turn
@@ -141,17 +155,18 @@ class GameService {
         val tile = game.drawTile()
         game.currentTileId = tile.id.value.toString()
 
-        TakeCardResponse(
-            tileId = tile.id.value.toString(),
-            tileDetails = tile.toTile(),
-            updatedGameState = game.toGameState()
-        )
+        val response = org.example.model.generated.TakeCardResponse()
+        response.tileId = tile.id.value.toString()
+        response.tileDetails = tile.toTile()
+        response.updatedGameState = game.toGameState()
+        
+        response
     }
 
     /**
      * Place a tile on the board
      */
-    fun placeTile(gameId: String, request: PlaceTileRequest, playerId: String): GameState = transaction {
+    fun placeTile(gameId: String, request: org.example.model.generated.PlaceTileRequest, playerId: String): org.example.model.generated.GameState = transaction {
         // Find the game
         val game = GameDao.findById(UUID.fromString(gameId))
             ?: throw IllegalArgumentException("Game not found")
@@ -173,10 +188,10 @@ class GameService {
 
         // Place the tile
         game.placeTile(
-            UUID.fromString(request.tileId),
-            request.x,
-            request.y,
-            request.rotation,
+            UUID.fromString(request.tileId ?: ""),
+            request.x ?: 0,
+            request.y ?: 0,
+            request.rotation ?: 0,
             UUID.fromString(playerId)
         )
 
@@ -186,7 +201,7 @@ class GameService {
     /**
      * Place a meeple on a tile
      */
-    fun placeMeeple(gameId: String, request: PlaceMeepleRequest, playerId: String): GameState = transaction {
+    fun placeMeeple(gameId: String, request: org.example.model.generated.PlaceMeepleRequest, playerId: String): org.example.model.generated.GameState = transaction {
         // Find the game
         val game = GameDao.findById(UUID.fromString(gameId))
             ?: throw IllegalArgumentException("Game not found")
@@ -204,9 +219,9 @@ class GameService {
         // Place the meeple
         game.placeMeeple(
             UUID.fromString(playerId),
-            UUID.fromString(request.tileId),
-            request.position,
-            UUID.fromString(request.featureId)
+            UUID.fromString(request.tileId ?: ""),
+            request.position ?: "",
+            UUID.fromString(request.featureId ?: "")
         )
 
         game.toGameState()
@@ -215,7 +230,7 @@ class GameService {
     /**
      * End the current player's turn
      */
-    fun endTurn(gameId: String, playerId: String): ScoreUpdateResponse = transaction {
+    fun endTurn(gameId: String, playerId: String): org.example.model.generated.ScoreUpdateResponse = transaction {
         // Find the game
         val game = GameDao.findById(UUID.fromString(gameId))
             ?: throw IllegalArgumentException("Game not found")
@@ -233,22 +248,12 @@ class GameService {
         // End the turn
         val (gameState, scoreUpdates) = game.endTurn()
 
-        // Convert score updates to API model
-        val scoreUpdateModels = scoreUpdates.map { update ->
-            ScoreUpdate(
-                playerId = update.playerId,
-                points = update.points,
-                feature = FeatureScoreInfo(
-                    featureType = update.feature.featureType,
-                    completed = update.feature.completed
-                )
-            )
-        }
-
-        ScoreUpdateResponse(
-            scoreUpdates = scoreUpdateModels,
-            updatedGameState = gameState
-        )
+        // Create the response
+        val response = org.example.model.generated.ScoreUpdateResponse()
+        response.scoreUpdates = scoreUpdates
+        response.updatedGameState = gameState
+        
+        response
     }
 
     /**

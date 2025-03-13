@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Carcassonne MVP API</title>
+  <title>Carcassonne Game API</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta charset="UTF-8" />
@@ -689,152 +689,402 @@
   <script>
     // Script section to load models into a JS Var
     var defs = {}
+            defs["CreateGameRequest"] = {
+  "type" : "object",
+  "properties" : {
+    "playerName" : {
+      "type" : "string",
+      "description" : "Name of the player creating the game"
+    },
+    "gameOptions" : {
+      "type" : "object",
+      "properties" : {
+        "includeExpansions" : {
+          "type" : "array",
+          "description" : "List of expansions to include",
+          "items" : {
+            "type" : "string",
+            "enum" : [ "base", "inns_and_cathedrals", "traders_and_builders" ]
+          }
+        },
+        "maxPlayers" : {
+          "maximum" : 6,
+          "minimum" : 2,
+          "type" : "integer",
+          "description" : "Maximum number of players allowed"
+        },
+        "timerSeconds" : {
+          "type" : "integer",
+          "description" : "Time limit for turns in seconds (0 for no limit)"
+        }
+      },
+      "description" : "Optional game configuration"
+    }
+  },
+  "description" : "Request to create a new game"
+};
+            defs["CreateGameResponse"] = {
+  "type" : "object",
+  "properties" : {
+    "gameId" : {
+      "type" : "string",
+      "description" : "ID of the created game"
+    },
+    "joinCode" : {
+      "type" : "string",
+      "description" : "Code that other players can use to join the game"
+    },
+    "token" : {
+      "type" : "string",
+      "description" : "JWT token for the host player"
+    },
+    "gameState" : {
+      "$ref" : "#/components/schemas/GameState"
+    }
+  },
+  "description" : "Response after creating a game"
+};
+            defs["EndTurnRequest"] = {
+  "type" : "object",
+  "properties" : {
+    "gameId" : {
+      "type" : "string",
+      "description" : "ID of the game"
+    }
+  },
+  "description" : "Request to end the current player's turn"
+};
             defs["ErrorResponse"] = {
   "type" : "object",
   "properties" : {
     "errorCode" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "Error code for programmatic handling"
     },
     "errorMessage" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "Human-readable error message"
     }
   },
-  "description" : "Структура ответа при ошибках"
+  "description" : "Error response structure"
 };
             defs["GameState"] = {
   "type" : "object",
   "properties" : {
     "gameId" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "Unique identifier for the game"
     },
     "board" : {
       "type" : "array",
-      "description" : "Массив тайлов на доске",
+      "description" : "Array of tiles placed on the board",
       "items" : {
         "$ref" : "#/components/schemas/Tile"
       }
     },
     "players" : {
       "type" : "array",
+      "description" : "List of players in the game",
       "items" : {
         "$ref" : "#/components/schemas/Player"
       }
     },
     "currentPlayerId" : {
       "type" : "string",
-      "description" : "Идентификатор игрока, который сейчас ходит"
+      "description" : "ID of the player whose turn it is"
+    },
+    "status" : {
+      "type" : "string",
+      "description" : "Current game status",
+      "enum" : [ "waiting", "active", "finished" ]
+    },
+    "remainingCards" : {
+      "type" : "integer",
+      "description" : "Number of cards remaining in the deck"
+    },
+    "currentTileId" : {
+      "type" : "string",
+      "description" : "ID of the current tile to be placed (if drawn)",
+      "nullable" : true
+    },
+    "createdAt" : {
+      "type" : "string",
+      "description" : "When the game was created",
+      "format" : "date-time"
+    },
+    "updatedAt" : {
+      "type" : "string",
+      "description" : "When the game was last updated",
+      "format" : "date-time"
     }
   },
-  "description" : "Состояние всей игры, включая доску, игроков, чей ход и т.д."
+  "description" : "Complete state of the game including board, players, current turn, and remaining cards"
 };
             defs["JoinGameRequest"] = {
   "type" : "object",
   "properties" : {
     "code" : {
       "type" : "string",
-      "description" : "Специальный код игры (или пароль)"
+      "description" : "Join code for the game"
     },
     "playerName" : {
       "type" : "string",
-      "description" : "Имя игрока (на основании которого сервер может создать playerId)"
+      "description" : "Name of the player joining the game"
     }
   },
-  "description" : "Данные для присоединения к игре"
+  "description" : "Request to join an existing game"
+};
+            defs["JoinGameResponse"] = {
+  "type" : "object",
+  "properties" : {
+    "token" : {
+      "type" : "string",
+      "description" : "JWT token for the player"
+    },
+    "gameState" : {
+      "$ref" : "#/components/schemas/GameState"
+    }
+  },
+  "description" : "Response after joining a game"
+};
+            defs["PlaceMeepleRequest"] = {
+  "type" : "object",
+  "properties" : {
+    "tileId" : {
+      "type" : "string",
+      "description" : "ID of the tile to place the meeple on"
+    },
+    "position" : {
+      "type" : "string",
+      "description" : "Position on the tile (e.g., \"north\", \"center\", \"northeast\")"
+    },
+    "featureId" : {
+      "type" : "string",
+      "description" : "ID of the feature to place the meeple on"
+    }
+  },
+  "description" : "Request to place a meeple on a tile"
+};
+            defs["PlaceTileRequest"] = {
+  "type" : "object",
+  "properties" : {
+    "tileId" : {
+      "type" : "string",
+      "description" : "ID of the tile to place"
+    },
+    "x" : {
+      "type" : "integer",
+      "description" : "X-coordinate on the board"
+    },
+    "y" : {
+      "type" : "integer",
+      "description" : "Y-coordinate on the board"
+    },
+    "rotation" : {
+      "type" : "integer",
+      "description" : "Rotation angle (0, 90, 180, 270)"
+    }
+  },
+  "description" : "Request to place a tile on the board"
 };
             defs["Player"] = {
   "type" : "object",
   "properties" : {
     "playerId" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "Unique identifier for the player"
     },
     "name" : {
-      "type" : "string"
+      "type" : "string",
+      "description" : "Player's display name"
+    },
+    "color" : {
+      "type" : "string",
+      "description" : "Player's color"
     },
     "meeples" : {
       "type" : "integer",
-      "description" : "Количество оставшихся мипов"
+      "description" : "Number of meeples the player has left"
+    },
+    "score" : {
+      "type" : "integer",
+      "description" : "Player's current score"
+    },
+    "isHost" : {
+      "type" : "boolean",
+      "description" : "Whether this player is the host of the game"
     }
   },
-  "description" : "Игрок в игре"
+  "description" : "Player in the game"
+};
+            defs["ScoreUpdateResponse"] = {
+  "type" : "object",
+  "properties" : {
+    "scoreUpdates" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "playerId" : {
+            "type" : "string",
+            "description" : "ID of the player"
+          },
+          "points" : {
+            "type" : "integer",
+            "description" : "Points earned in this update"
+          },
+          "feature" : {
+            "type" : "object",
+            "properties" : {
+              "featureType" : {
+                "type" : "string",
+                "enum" : [ "city", "road", "monastery", "field" ]
+              },
+              "completed" : {
+                "type" : "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "updatedGameState" : {
+      "$ref" : "#/components/schemas/GameState"
+    }
+  },
+  "description" : "Response containing score updates after a turn"
+};
+            defs["TakeCardRequest"] = {
+  "type" : "object",
+  "properties" : {
+    "gameId" : {
+      "type" : "string",
+      "description" : "ID of the game"
+    }
+  },
+  "description" : "Request to draw a card from the deck"
 };
             defs["TakeCardResponse"] = {
   "type" : "object",
   "properties" : {
     "tileId" : {
       "type" : "string",
-      "description" : "Идентификатор взятого тайла"
+      "description" : "ID of the drawn tile"
+    },
+    "tileDetails" : {
+      "$ref" : "#/components/schemas/Tile"
     },
     "updatedGameState" : {
       "$ref" : "#/components/schemas/GameState"
     }
   },
-  "description" : "Результат взятия карточки из колоды"
+  "description" : "Response after drawing a card"
 };
             defs["Tile"] = {
   "type" : "object",
   "properties" : {
     "tileId" : {
       "type" : "string",
-      "description" : "Идентификатор карточки-тайла"
+      "description" : "Unique identifier for the tile"
+    },
+    "tileType" : {
+      "type" : "string",
+      "description" : "Type of tile (e.g., city, road, monastery, field)"
     },
     "x" : {
-      "type" : "integer"
+      "type" : "integer",
+      "description" : "X-coordinate on the board"
     },
     "y" : {
-      "type" : "integer"
+      "type" : "integer",
+      "description" : "Y-coordinate on the board"
     },
     "rotation" : {
       "type" : "integer",
-      "description" : "Угол поворота (0, 90, 180, 270)"
+      "description" : "Rotation angle (0, 90, 180, 270)"
+    },
+    "sides" : {
+      "type" : "object",
+      "properties" : {
+        "north" : {
+          "type" : "string",
+          "enum" : [ "city", "road", "field" ]
+        },
+        "east" : {
+          "type" : "string",
+          "enum" : [ "city", "road", "field" ]
+        },
+        "south" : {
+          "type" : "string",
+          "enum" : [ "city", "road", "field" ]
+        },
+        "west" : {
+          "type" : "string",
+          "enum" : [ "city", "road", "field" ]
+        }
+      },
+      "description" : "Description of each side of the tile"
+    },
+    "features" : {
+      "type" : "array",
+      "description" : "Features on this tile (cities, roads, etc.)",
+      "items" : {
+        "$ref" : "#/components/schemas/TileFeature"
+      }
     },
     "meeple" : {
-      "type" : "string",
-      "description" : "Идентификатор игрока, если на тайле размещён мип",
+      "type" : "object",
+      "properties" : {
+        "playerId" : {
+          "type" : "string",
+          "description" : "ID of the player who placed the meeple"
+        },
+        "position" : {
+          "type" : "string",
+          "description" : "Position on the tile (e.g., \"north\", \"center\", \"northeast\")"
+        },
+        "featureId" : {
+          "type" : "string",
+          "description" : "ID of the feature the meeple is placed on"
+        }
+      },
+      "description" : "Information about a placed meeple on this tile",
       "nullable" : true
     }
   },
-  "description" : "Информация о размещённом тайле"
+  "description" : "Information about a placed tile"
 };
-            defs["TurnRequest"] = {
+            defs["TileFeature"] = {
   "type" : "object",
   "properties" : {
-    "tilePlacement" : {
-      "type" : "object",
-      "properties" : {
-        "tileId" : {
-          "type" : "string"
-        },
-        "x" : {
-          "type" : "integer"
-        },
-        "y" : {
-          "type" : "integer"
-        },
-        "rotation" : {
-          "type" : "integer",
-          "description" : "Угол поворота (0, 90, 180, 270)"
-        }
-      },
-      "description" : "Данные для установки тайла на доску (может быть null, если игрок не ставит тайл)",
-      "nullable" : true
+    "featureId" : {
+      "type" : "string",
+      "description" : "Unique identifier for this feature"
     },
-    "meeplePlacement" : {
-      "type" : "object",
-      "properties" : {
-        "tileId" : {
-          "type" : "string",
-          "description" : "На какой тайл устанавливаем мип (по tileId)"
-        },
-        "region" : {
-          "type" : "string",
-          "description" : "Часть тайла, куда ставим мип (например, \"город\", \"дорога\", \"поле\")"
-        }
-      },
-      "description" : "Данные для установки мипа (может быть null, если игрок не ставит мип)",
+    "featureType" : {
+      "type" : "string",
+      "description" : "Type of feature",
+      "enum" : [ "city", "road", "monastery", "field" ]
+    },
+    "sides" : {
+      "type" : "array",
+      "description" : "Which sides of the tile this feature connects to",
+      "items" : {
+        "type" : "string",
+        "enum" : [ "north", "east", "south", "west" ]
+      }
+    },
+    "completed" : {
+      "type" : "boolean",
+      "description" : "Whether this feature is completed"
+    },
+    "points" : {
+      "type" : "integer",
+      "description" : "Points this feature is worth if completed",
       "nullable" : true
     }
   },
-  "description" : "Данные для совершения хода: можно поставить тайл, мип (опционально). Бэкенд сам решает, нужно ли завершать ход. (playerId не указываем, берётся из JWT.)\n"
+  "description" : "A feature on a tile (city, road, monastery, field)"
 };
   </script>
 
@@ -853,17 +1103,26 @@
             <li class="nav-fixed nav-header active" data-group="_"><a href="#api-_">API Summary</a></li>
 
                   <li class="nav-header" data-group="Default"><a href="#api-Default">API Methods - Default</a></li>
+                    <li data-group="Default" data-name="gameGameIdEndTurnPost" class="">
+                      <a href="#api-Default-gameGameIdEndTurnPost">gameGameIdEndTurnPost</a>
+                    </li>
                     <li data-group="Default" data-name="gameGameIdGet" class="">
                       <a href="#api-Default-gameGameIdGet">gameGameIdGet</a>
                     </li>
                     <li data-group="Default" data-name="gameGameIdJoinPost" class="">
                       <a href="#api-Default-gameGameIdJoinPost">gameGameIdJoinPost</a>
                     </li>
+                    <li data-group="Default" data-name="gameGameIdPlaceMeeplePost" class="">
+                      <a href="#api-Default-gameGameIdPlaceMeeplePost">gameGameIdPlaceMeeplePost</a>
+                    </li>
+                    <li data-group="Default" data-name="gameGameIdPlaceTilePost" class="">
+                      <a href="#api-Default-gameGameIdPlaceTilePost">gameGameIdPlaceTilePost</a>
+                    </li>
                     <li data-group="Default" data-name="gameGameIdStartPost" class="">
                       <a href="#api-Default-gameGameIdStartPost">gameGameIdStartPost</a>
                     </li>
-                    <li data-group="Default" data-name="gameGameIdTurnPost" class="">
-                      <a href="#api-Default-gameGameIdTurnPost">gameGameIdTurnPost</a>
+                    <li data-group="Default" data-name="gamePost" class="">
+                      <a href="#api-Default-gamePost">gamePost</a>
                     </li>
                     <li data-group="Default" data-name="gameTakeCardPost" class="">
                       <a href="#api-Default-gameTakeCardPost">gameTakeCardPost</a>
@@ -874,7 +1133,7 @@
       <div id="content">
         <div id="project">
           <div class="pull-left">
-            <h1>Carcassonne MVP API</h1>
+            <h1>Carcassonne Game API</h1>
           </div>
           <div class="clearfix"></div>
         </div>
@@ -883,22 +1142,525 @@
             <h2 id="welcome-to-apidoc">API and SDK Documentation</h2>
               <div class="app-desc">Version: 3.0.0</div>
             <hr>
-            <div>Обновлённая спецификация REST API для Carcassonne, где <code>playerId</code> не передаётся явно, а извлекается бэкендом из JWT-токена.</div>
+            <div>Comprehensive REST API for Carcassonne game, where player identification is handled via JWT tokens. This API supports all game operations including game creation, joining, tile placement, meeple placement, and scoring.</div>
           </div>
         </div>
         <div id="sections">
                 <section id="api-Default">
                   <h1>Default</h1>
-                    <div id="api-Default-gameGameIdGet">
-                      <article id="api-Default-gameGameIdGet-0" data-group="User" data-name="gameGameIdGet" data-version="0">
+                    <div id="api-Default-gameGameIdEndTurnPost">
+                      <article id="api-Default-gameGameIdEndTurnPost-0" data-group="User" data-name="gameGameIdEndTurnPost" data-version="0">
                         <div class="pull-left">
-                          <h1>gameGameIdGet</h1>
-                          <p>Получить состояние игры по ID</p>
+                          <h1>gameGameIdEndTurnPost</h1>
+                          <p>End the current player&#x27;s turn</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">Возвращает всю информацию о состоянии игры (поле, игроки, доступные карточки и т.д.)</p>
+                        <p class="marked">Completes the current player&#x27;s turn and moves to the next player</p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game/{gameId}/endTurn</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-Default-gameGameIdEndTurnPost-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-java">Java</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdEndTurnPost-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-Default-gameGameIdEndTurnPost-0-curl">
+                           <pre class="prettyprint"><code class="language-bsh">curl -X POST\
+ -H "Authorization: Bearer [[accessToken]]"\
+-H "Accept: application/json"\
+-H "Content-Type: application/json"\
+"https://api.example.com/game/{gameId}/endTurn"</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.DefaultApi;
+
+import java.io.File;
+import java.util.*;
+
+public class DefaultApiExample {
+
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+
+
+        DefaultApi apiInstance = new DefaultApi();
+        EndTurnRequest body = ; // EndTurnRequest | 
+        String gameId = gameId_example; // String | ID of the game
+        try {
+            ScoreUpdateResponse result = apiInstance.gameGameIdEndTurnPost(body, gameId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling DefaultApi#gameGameIdEndTurnPost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.DefaultApi;
+
+public class DefaultApiExample {
+
+    public static void main(String[] args) {
+        DefaultApi apiInstance = new DefaultApi();
+        EndTurnRequest body = ; // EndTurnRequest | 
+        String gameId = gameId_example; // String | ID of the game
+        try {
+            ScoreUpdateResponse result = apiInstance.gameGameIdEndTurnPost(body, gameId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling DefaultApi#gameGameIdEndTurnPost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">Configuration *apiConfig = [Configuration sharedConfig];
+EndTurnRequest *body = ; // 
+String *gameId = gameId_example; // ID of the game
+
+DefaultApi *apiInstance = [[DefaultApi alloc] init];
+
+// End the current player's turn
+[apiInstance gameGameIdEndTurnPostWith:body
+    gameId:gameId
+              completionHandler: ^(ScoreUpdateResponse output, NSError* error) {
+                            if (output) {
+                                NSLog(@"%@", output);
+                            }
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
+var defaultClient = CarcassonneGameApi.ApiClient.instance;
+
+
+var api = new CarcassonneGameApi.DefaultApi()
+var body = ; // {{EndTurnRequest}} 
+var gameId = gameId_example; // {{String}} ID of the game
+
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully. Returned data: ' + data);
+  }
+};
+api.gameGameIdEndTurnPost(bodygameId, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class gameGameIdEndTurnPostExample
+    {
+        public void main()
+        {
+
+
+            var apiInstance = new DefaultApi();
+            var body = new EndTurnRequest(); // EndTurnRequest | 
+            var gameId = gameId_example;  // String | ID of the game
+
+            try
+            {
+                // End the current player's turn
+                ScoreUpdateResponse result = apiInstance.gameGameIdEndTurnPost(body, gameId);
+                Debug.WriteLine(result);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling DefaultApi.gameGameIdEndTurnPost: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+
+$api_instance = new Swagger\Client\ApiDefaultApi();
+$body = ; // EndTurnRequest | 
+$gameId = gameId_example; // String | ID of the game
+
+try {
+    $result = $api_instance->gameGameIdEndTurnPost($body, $gameId);
+    print_r($result);
+} catch (Exception $e) {
+    echo 'Exception when calling DefaultApi->gameGameIdEndTurnPost: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::DefaultApi;
+
+
+my $api_instance = WWW::SwaggerClient::DefaultApi->new();
+my $body = WWW::SwaggerClient::Object::EndTurnRequest->new(); # EndTurnRequest | 
+my $gameId = gameId_example; # String | ID of the game
+
+eval { 
+    my $result = $api_instance->gameGameIdEndTurnPost(body => $body, gameId => $gameId);
+    print Dumper($result);
+};
+if ($@) {
+    warn "Exception when calling DefaultApi->gameGameIdEndTurnPost: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdEndTurnPost-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+
+# create an instance of the API class
+api_instance = swagger_client.DefaultApi()
+body =  # EndTurnRequest | 
+gameId = gameId_example # String | ID of the game
+
+try: 
+    # End the current player's turn
+    api_response = api_instance.game_game_id_end_turn_post(body, gameId)
+    pprint(api_response)
+except ApiException as e:
+    print("Exception when calling DefaultApi->gameGameIdEndTurnPost: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+                            <div class="methodsubtabletitle">Path parameters</div>
+                            <table id="methodsubtable">
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
+                                </tr>
+                                  <tr><td style="width:150px;">gameId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_gameGameIdEndTurnPost_gameId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                                      <div class="inner description">
+                                                          ID of the game
+                                                      </div>
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                            </table>
+
+
+                            <div class="methodsubtabletitle">Body parameters</div>
+                            <table id="methodsubtable">
+                              <tr>
+                                <th width="150px">Name</th>
+                                <th>Description</th>
+                              </tr>
+                                <tr><td style="width:150px;">body <span style="color:red;">*</span></td>
+                                <td>
+                                
+                                
+                                <script>
+                                $(document).ready(function() {
+                                  var schemaWrapper = {
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/EndTurnRequest"
+      }
+    }
+  },
+  "required" : true
+};
+                                  var schema = schemaWrapper.content["application/json"].schema;
+                                  if (schema.$ref != null) {
+                                    schema = defsParser.$refs.get(schema.$ref);
+                                  } else {
+                                    schemaWrapper.components = {};
+                                    schemaWrapper.components.schemas = Object.assign({}, defs);
+                                    $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                      console.log(err);
+                                    });
+                                  }
+                                
+                                  var view = new JSONSchemaView(schema,2,{isBodyParam: true});
+                                  var result = $('#d2e199_gameGameIdEndTurnPost_body');
+                                  result.empty();
+                                  result.append(view.render());
+                                });
+                                </script>
+                                <div id="d2e199_gameGameIdEndTurnPost_body"></div>
+                                </td>
+                                </tr>
+                            </table>
+
+
+
+                          <h2>Responses</h2>
+                            <h3> Status: 200 - Turn successfully ended </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdEndTurnPost-200-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdEndTurnPost-200-schema">
+                                  <div id='responses-gameGameIdEndTurnPost-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Turn successfully ended",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ScoreUpdateResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdEndTurnPost-200-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdEndTurnPost-200-schema-200');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdEndTurnPost-200-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 400 - Invalid request or tile not placed </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdEndTurnPost-400-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdEndTurnPost-400-schema">
+                                  <div id='responses-gameGameIdEndTurnPost-400-schema-400' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Invalid request or tile not placed",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdEndTurnPost-400-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdEndTurnPost-400-schema-400');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdEndTurnPost-400-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 403 - Not the player&#x27;s turn </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdEndTurnPost-403-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdEndTurnPost-403-schema">
+                                  <div id='responses-gameGameIdEndTurnPost-403-schema-403' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Not the player's turn",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdEndTurnPost-403-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdEndTurnPost-403-schema-403');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdEndTurnPost-403-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 404 - Game not found </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdEndTurnPost-404-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdEndTurnPost-404-schema">
+                                  <div id='responses-gameGameIdEndTurnPost-404-schema-404' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Game not found",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdEndTurnPost-404-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdEndTurnPost-404-schema-404');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdEndTurnPost-404-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
+                    <div id="api-Default-gameGameIdGet">
+                      <article id="api-Default-gameGameIdGet-0" data-group="User" data-name="gameGameIdGet" data-version="0">
+                        <div class="pull-left">
+                          <h1>gameGameIdGet</h1>
+                          <p>Get game state</p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked">Returns the current state of the game</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="get"><code><span class="pln">/game/{gameId}</span></code></pre>
@@ -942,7 +1704,7 @@ public class DefaultApiExample {
 
 
         DefaultApi apiInstance = new DefaultApi();
-        String gameId = gameId_example; // String | Идентификатор игры
+        String gameId = gameId_example; // String | ID of the game
         try {
             GameState result = apiInstance.gameGameIdGet(gameId);
             System.out.println(result);
@@ -961,7 +1723,7 @@ public class DefaultApiExample {
 
     public static void main(String[] args) {
         DefaultApi apiInstance = new DefaultApi();
-        String gameId = gameId_example; // String | Идентификатор игры
+        String gameId = gameId_example; // String | ID of the game
         try {
             GameState result = apiInstance.gameGameIdGet(gameId);
             System.out.println(result);
@@ -978,11 +1740,11 @@ public class DefaultApiExample {
   </div> -->
                             <div class="tab-pane" id="examples-Default-gameGameIdGet-0-objc">
                               <pre class="prettyprint"><code class="language-cpp">Configuration *apiConfig = [Configuration sharedConfig];
-String *gameId = gameId_example; // Идентификатор игры
+String *gameId = gameId_example; // ID of the game
 
 DefaultApi *apiInstance = [[DefaultApi alloc] init];
 
-// Получить состояние игры по ID
+// Get game state
 [apiInstance gameGameIdGetWith:gameId
               completionHandler: ^(GameState output, NSError* error) {
                             if (output) {
@@ -996,12 +1758,12 @@ DefaultApi *apiInstance = [[DefaultApi alloc] init];
                             </div>
 
                             <div class="tab-pane" id="examples-Default-gameGameIdGet-0-javascript">
-                              <pre class="prettyprint"><code class="language-js">var CarcassonneMvpApi = require('carcassonne_mvp_api');
-var defaultClient = CarcassonneMvpApi.ApiClient.instance;
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
+var defaultClient = CarcassonneGameApi.ApiClient.instance;
 
 
-var api = new CarcassonneMvpApi.DefaultApi()
-var gameId = gameId_example; // {{String}} Идентификатор игры
+var api = new CarcassonneGameApi.DefaultApi()
+var gameId = gameId_example; // {{String}} ID of the game
 
 var callback = function(error, data, response) {
   if (error) {
@@ -1033,11 +1795,11 @@ namespace Example
 
 
             var apiInstance = new DefaultApi();
-            var gameId = gameId_example;  // String | Идентификатор игры
+            var gameId = gameId_example;  // String | ID of the game
 
             try
             {
-                // Получить состояние игры по ID
+                // Get game state
                 GameState result = apiInstance.gameGameIdGet(gameId);
                 Debug.WriteLine(result);
             }
@@ -1057,7 +1819,7 @@ require_once(__DIR__ . '/vendor/autoload.php');
 
 
 $api_instance = new Swagger\Client\ApiDefaultApi();
-$gameId = gameId_example; // String | Идентификатор игры
+$gameId = gameId_example; // String | ID of the game
 
 try {
     $result = $api_instance->gameGameIdGet($gameId);
@@ -1075,7 +1837,7 @@ use WWW::SwaggerClient::DefaultApi;
 
 
 my $api_instance = WWW::SwaggerClient::DefaultApi->new();
-my $gameId = gameId_example; # String | Идентификатор игры
+my $gameId = gameId_example; # String | ID of the game
 
 eval { 
     my $result = $api_instance->gameGameIdGet(gameId => $gameId);
@@ -1096,10 +1858,10 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.DefaultApi()
-gameId = gameId_example # String | Идентификатор игры
+gameId = gameId_example # String | ID of the game
 
 try: 
-    # Получить состояние игры по ID
+    # Get game state
     api_response = api_instance.game_game_id_get(gameId)
     pprint(api_response)
 except ApiException as e:
@@ -1127,7 +1889,7 @@ except ApiException as e:
                                                   </span>
                                   
                                                       <div class="inner description">
-                                                          Идентификатор игры
+                                                          ID of the game
                                                       </div>
                                               </div>
                                                   <div class="inner required">
@@ -1144,7 +1906,7 @@ except ApiException as e:
 
 
                           <h2>Responses</h2>
-                            <h3> Status: 200 - Успешное получение состояния игры </h3>
+                            <h3> Status: 200 - Game state successfully retrieved </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -1159,7 +1921,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Успешное получение состояния игры",
+  "description" : "Game state successfully retrieved",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -1192,7 +1954,7 @@ except ApiException as e:
                                 </div>
                             </div>
 
-                            <h3> Status: 404 - Игра не найдена </h3>
+                            <h3> Status: 404 - Game not found </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -1207,7 +1969,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Игра не найдена",
+  "description" : "Game not found",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -1247,12 +2009,12 @@ except ApiException as e:
                       <article id="api-Default-gameGameIdJoinPost-0" data-group="User" data-name="gameGameIdJoinPost" data-version="0">
                         <div class="pull-left">
                           <h1>gameGameIdJoinPost</h1>
-                          <p>Присоединиться к существующей игре</p>
+                          <p>Join an existing game</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">Позволяет игроку зарегистрироваться в игру по коду</p>
+                        <p class="marked">Allows a player to join a game using a join code</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game/{gameId}/join</span></code></pre>
@@ -1295,9 +2057,9 @@ public class DefaultApiExample {
         
         DefaultApi apiInstance = new DefaultApi();
         JoinGameRequest body = ; // JoinGameRequest | 
-        String gameId = gameId_example; // String | Идентификатор игры
+        String gameId = gameId_example; // String | ID of the game
         try {
-            GameState result = apiInstance.gameGameIdJoinPost(body, gameId);
+            JoinGameResponse result = apiInstance.gameGameIdJoinPost(body, gameId);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling DefaultApi#gameGameIdJoinPost");
@@ -1315,9 +2077,9 @@ public class DefaultApiExample {
     public static void main(String[] args) {
         DefaultApi apiInstance = new DefaultApi();
         JoinGameRequest body = ; // JoinGameRequest | 
-        String gameId = gameId_example; // String | Идентификатор игры
+        String gameId = gameId_example; // String | ID of the game
         try {
-            GameState result = apiInstance.gameGameIdJoinPost(body, gameId);
+            JoinGameResponse result = apiInstance.gameGameIdJoinPost(body, gameId);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling DefaultApi#gameGameIdJoinPost");
@@ -1332,14 +2094,14 @@ public class DefaultApiExample {
   </div> -->
                             <div class="tab-pane" id="examples-Default-gameGameIdJoinPost-0-objc">
                               <pre class="prettyprint"><code class="language-cpp">JoinGameRequest *body = ; // 
-String *gameId = gameId_example; // Идентификатор игры
+String *gameId = gameId_example; // ID of the game
 
 DefaultApi *apiInstance = [[DefaultApi alloc] init];
 
-// Присоединиться к существующей игре
+// Join an existing game
 [apiInstance gameGameIdJoinPostWith:body
     gameId:gameId
-              completionHandler: ^(GameState output, NSError* error) {
+              completionHandler: ^(JoinGameResponse output, NSError* error) {
                             if (output) {
                                 NSLog(@"%@", output);
                             }
@@ -1351,11 +2113,11 @@ DefaultApi *apiInstance = [[DefaultApi alloc] init];
                             </div>
 
                             <div class="tab-pane" id="examples-Default-gameGameIdJoinPost-0-javascript">
-                              <pre class="prettyprint"><code class="language-js">var CarcassonneMvpApi = require('carcassonne_mvp_api');
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
 
-var api = new CarcassonneMvpApi.DefaultApi()
+var api = new CarcassonneGameApi.DefaultApi()
 var body = ; // {{JoinGameRequest}} 
-var gameId = gameId_example; // {{String}} Идентификатор игры
+var gameId = gameId_example; // {{String}} ID of the game
 
 var callback = function(error, data, response) {
   if (error) {
@@ -1387,12 +2149,12 @@ namespace Example
 
             var apiInstance = new DefaultApi();
             var body = new JoinGameRequest(); // JoinGameRequest | 
-            var gameId = gameId_example;  // String | Идентификатор игры
+            var gameId = gameId_example;  // String | ID of the game
 
             try
             {
-                // Присоединиться к существующей игре
-                GameState result = apiInstance.gameGameIdJoinPost(body, gameId);
+                // Join an existing game
+                JoinGameResponse result = apiInstance.gameGameIdJoinPost(body, gameId);
                 Debug.WriteLine(result);
             }
             catch (Exception e)
@@ -1411,7 +2173,7 @@ require_once(__DIR__ . '/vendor/autoload.php');
 
 $api_instance = new Swagger\Client\ApiDefaultApi();
 $body = ; // JoinGameRequest | 
-$gameId = gameId_example; // String | Идентификатор игры
+$gameId = gameId_example; // String | ID of the game
 
 try {
     $result = $api_instance->gameGameIdJoinPost($body, $gameId);
@@ -1429,7 +2191,7 @@ use WWW::SwaggerClient::DefaultApi;
 
 my $api_instance = WWW::SwaggerClient::DefaultApi->new();
 my $body = WWW::SwaggerClient::Object::JoinGameRequest->new(); # JoinGameRequest | 
-my $gameId = gameId_example; # String | Идентификатор игры
+my $gameId = gameId_example; # String | ID of the game
 
 eval { 
     my $result = $api_instance->gameGameIdJoinPost(body => $body, gameId => $gameId);
@@ -1450,10 +2212,10 @@ from pprint import pprint
 # create an instance of the API class
 api_instance = swagger_client.DefaultApi()
 body =  # JoinGameRequest | 
-gameId = gameId_example # String | Идентификатор игры
+gameId = gameId_example # String | ID of the game
 
 try: 
-    # Присоединиться к существующей игре
+    # Join an existing game
     api_response = api_instance.game_game_id_join_post(body, gameId)
     pprint(api_response)
 except ApiException as e:
@@ -1481,7 +2243,7 @@ except ApiException as e:
                                                   </span>
                                   
                                                       <div class="inner description">
-                                                          Идентификатор игры
+                                                          ID of the game
                                                       </div>
                                               </div>
                                                   <div class="inner required">
@@ -1541,7 +2303,7 @@ except ApiException as e:
 
 
                           <h2>Responses</h2>
-                            <h3> Status: 200 - Успешная регистрация в игре, возвращает новое состояние игры </h3>
+                            <h3> Status: 200 - Successfully joined the game </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -1556,11 +2318,11 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Успешная регистрация в игре, возвращает новое состояние игры",
+  "description" : "Successfully joined the game",
   "content" : {
     "application/json" : {
       "schema" : {
-        "$ref" : "#/components/schemas/GameState"
+        "$ref" : "#/components/schemas/JoinGameResponse"
       }
     }
   }
@@ -1589,7 +2351,7 @@ except ApiException as e:
                                 </div>
                             </div>
 
-                            <h3> Status: 400 - Некорректные данные </h3>
+                            <h3> Status: 400 - Invalid request </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -1604,7 +2366,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Некорректные данные",
+  "description" : "Invalid request",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -1637,7 +2399,7 @@ except ApiException as e:
                                 </div>
                             </div>
 
-                            <h3> Status: 404 - Игра не найдена </h3>
+                            <h3> Status: 404 - Game not found </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -1652,7 +2414,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Игра не найдена",
+  "description" : "Game not found",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -1688,16 +2450,1022 @@ except ApiException as e:
                         </article>
                       </div>
                       <hr>
-                    <div id="api-Default-gameGameIdStartPost">
-                      <article id="api-Default-gameGameIdStartPost-0" data-group="User" data-name="gameGameIdStartPost" data-version="0">
+                    <div id="api-Default-gameGameIdPlaceMeeplePost">
+                      <article id="api-Default-gameGameIdPlaceMeeplePost-0" data-group="User" data-name="gameGameIdPlaceMeeplePost" data-version="0">
                         <div class="pull-left">
-                          <h1>gameGameIdStartPost</h1>
-                          <p>Старт игры</p>
+                          <h1>gameGameIdPlaceMeeplePost</h1>
+                          <p>Place a meeple on a tile</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">Инициализирует состояние игроков, раздаёт стартовые карточки и т.д.</p>
+                        <p class="marked">Places a meeple on a recently placed tile</p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game/{gameId}/placeMeeple</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-java">Java</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceMeeplePost-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-Default-gameGameIdPlaceMeeplePost-0-curl">
+                           <pre class="prettyprint"><code class="language-bsh">curl -X POST\
+ -H "Authorization: Bearer [[accessToken]]"\
+-H "Accept: application/json"\
+-H "Content-Type: application/json"\
+"https://api.example.com/game/{gameId}/placeMeeple"</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.DefaultApi;
+
+import java.io.File;
+import java.util.*;
+
+public class DefaultApiExample {
+
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+
+
+        DefaultApi apiInstance = new DefaultApi();
+        PlaceMeepleRequest body = ; // PlaceMeepleRequest | 
+        String gameId = gameId_example; // String | ID of the game
+        try {
+            GameState result = apiInstance.gameGameIdPlaceMeeplePost(body, gameId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling DefaultApi#gameGameIdPlaceMeeplePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.DefaultApi;
+
+public class DefaultApiExample {
+
+    public static void main(String[] args) {
+        DefaultApi apiInstance = new DefaultApi();
+        PlaceMeepleRequest body = ; // PlaceMeepleRequest | 
+        String gameId = gameId_example; // String | ID of the game
+        try {
+            GameState result = apiInstance.gameGameIdPlaceMeeplePost(body, gameId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling DefaultApi#gameGameIdPlaceMeeplePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">Configuration *apiConfig = [Configuration sharedConfig];
+PlaceMeepleRequest *body = ; // 
+String *gameId = gameId_example; // ID of the game
+
+DefaultApi *apiInstance = [[DefaultApi alloc] init];
+
+// Place a meeple on a tile
+[apiInstance gameGameIdPlaceMeeplePostWith:body
+    gameId:gameId
+              completionHandler: ^(GameState output, NSError* error) {
+                            if (output) {
+                                NSLog(@"%@", output);
+                            }
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
+var defaultClient = CarcassonneGameApi.ApiClient.instance;
+
+
+var api = new CarcassonneGameApi.DefaultApi()
+var body = ; // {{PlaceMeepleRequest}} 
+var gameId = gameId_example; // {{String}} ID of the game
+
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully. Returned data: ' + data);
+  }
+};
+api.gameGameIdPlaceMeeplePost(bodygameId, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class gameGameIdPlaceMeeplePostExample
+    {
+        public void main()
+        {
+
+
+            var apiInstance = new DefaultApi();
+            var body = new PlaceMeepleRequest(); // PlaceMeepleRequest | 
+            var gameId = gameId_example;  // String | ID of the game
+
+            try
+            {
+                // Place a meeple on a tile
+                GameState result = apiInstance.gameGameIdPlaceMeeplePost(body, gameId);
+                Debug.WriteLine(result);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling DefaultApi.gameGameIdPlaceMeeplePost: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+
+$api_instance = new Swagger\Client\ApiDefaultApi();
+$body = ; // PlaceMeepleRequest | 
+$gameId = gameId_example; // String | ID of the game
+
+try {
+    $result = $api_instance->gameGameIdPlaceMeeplePost($body, $gameId);
+    print_r($result);
+} catch (Exception $e) {
+    echo 'Exception when calling DefaultApi->gameGameIdPlaceMeeplePost: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::DefaultApi;
+
+
+my $api_instance = WWW::SwaggerClient::DefaultApi->new();
+my $body = WWW::SwaggerClient::Object::PlaceMeepleRequest->new(); # PlaceMeepleRequest | 
+my $gameId = gameId_example; # String | ID of the game
+
+eval { 
+    my $result = $api_instance->gameGameIdPlaceMeeplePost(body => $body, gameId => $gameId);
+    print Dumper($result);
+};
+if ($@) {
+    warn "Exception when calling DefaultApi->gameGameIdPlaceMeeplePost: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceMeeplePost-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+
+# create an instance of the API class
+api_instance = swagger_client.DefaultApi()
+body =  # PlaceMeepleRequest | 
+gameId = gameId_example # String | ID of the game
+
+try: 
+    # Place a meeple on a tile
+    api_response = api_instance.game_game_id_place_meeple_post(body, gameId)
+    pprint(api_response)
+except ApiException as e:
+    print("Exception when calling DefaultApi->gameGameIdPlaceMeeplePost: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+                            <div class="methodsubtabletitle">Path parameters</div>
+                            <table id="methodsubtable">
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
+                                </tr>
+                                  <tr><td style="width:150px;">gameId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_gameGameIdPlaceMeeplePost_gameId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                                      <div class="inner description">
+                                                          ID of the game
+                                                      </div>
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                            </table>
+
+
+                            <div class="methodsubtabletitle">Body parameters</div>
+                            <table id="methodsubtable">
+                              <tr>
+                                <th width="150px">Name</th>
+                                <th>Description</th>
+                              </tr>
+                                <tr><td style="width:150px;">body <span style="color:red;">*</span></td>
+                                <td>
+                                
+                                
+                                <script>
+                                $(document).ready(function() {
+                                  var schemaWrapper = {
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/PlaceMeepleRequest"
+      }
+    }
+  },
+  "required" : true
+};
+                                  var schema = schemaWrapper.content["application/json"].schema;
+                                  if (schema.$ref != null) {
+                                    schema = defsParser.$refs.get(schema.$ref);
+                                  } else {
+                                    schemaWrapper.components = {};
+                                    schemaWrapper.components.schemas = Object.assign({}, defs);
+                                    $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                      console.log(err);
+                                    });
+                                  }
+                                
+                                  var view = new JSONSchemaView(schema,2,{isBodyParam: true});
+                                  var result = $('#d2e199_gameGameIdPlaceMeeplePost_body');
+                                  result.empty();
+                                  result.append(view.render());
+                                });
+                                </script>
+                                <div id="d2e199_gameGameIdPlaceMeeplePost_body"></div>
+                                </td>
+                                </tr>
+                            </table>
+
+
+
+                          <h2>Responses</h2>
+                            <h3> Status: 200 - Meeple successfully placed </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceMeeplePost-200-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceMeeplePost-200-schema">
+                                  <div id='responses-gameGameIdPlaceMeeplePost-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Meeple successfully placed",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/GameState"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceMeeplePost-200-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceMeeplePost-200-schema-200');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceMeeplePost-200-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 400 - Invalid meeple placement </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceMeeplePost-400-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceMeeplePost-400-schema">
+                                  <div id='responses-gameGameIdPlaceMeeplePost-400-schema-400' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Invalid meeple placement",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceMeeplePost-400-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceMeeplePost-400-schema-400');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceMeeplePost-400-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 403 - Not the player&#x27;s turn or no meeples left </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceMeeplePost-403-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceMeeplePost-403-schema">
+                                  <div id='responses-gameGameIdPlaceMeeplePost-403-schema-403' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Not the player's turn or no meeples left",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceMeeplePost-403-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceMeeplePost-403-schema-403');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceMeeplePost-403-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 404 - Game or tile not found </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceMeeplePost-404-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceMeeplePost-404-schema">
+                                  <div id='responses-gameGameIdPlaceMeeplePost-404-schema-404' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Game or tile not found",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceMeeplePost-404-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceMeeplePost-404-schema-404');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceMeeplePost-404-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
+                    <div id="api-Default-gameGameIdPlaceTilePost">
+                      <article id="api-Default-gameGameIdPlaceTilePost-0" data-group="User" data-name="gameGameIdPlaceTilePost" data-version="0">
+                        <div class="pull-left">
+                          <h1>gameGameIdPlaceTilePost</h1>
+                          <p>Place a tile on the board</p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked">Places the current tile on the board at the specified position</p>
+                        <p></p>
+                        <br />
+                        <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game/{gameId}/placeTile</span></code></pre>
+                        <p>
+                          <h3>Usage and SDK Samples</h3>
+                        </p>
+                        <ul class="nav nav-tabs nav-tabs-examples">
+                          <li class="active"><a href="#examples-Default-gameGameIdPlaceTilePost-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-java">Java</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-Default-gameGameIdPlaceTilePost-0-python">Python</a></li>
+                        </ul>
+
+                        <div class="tab-content">
+                          <div class="tab-pane active" id="examples-Default-gameGameIdPlaceTilePost-0-curl">
+                           <pre class="prettyprint"><code class="language-bsh">curl -X POST\
+ -H "Authorization: Bearer [[accessToken]]"\
+-H "Accept: application/json"\
+-H "Content-Type: application/json"\
+"https://api.example.com/game/{gameId}/placeTile"</code></pre>
+                          </div>
+                          <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-java">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
+import io.swagger.client.auth.*;
+import io.swagger.client.model.*;
+import io.swagger.client.api.DefaultApi;
+
+import java.io.File;
+import java.util.*;
+
+public class DefaultApiExample {
+
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+
+
+        DefaultApi apiInstance = new DefaultApi();
+        PlaceTileRequest body = ; // PlaceTileRequest | 
+        String gameId = gameId_example; // String | ID of the game
+        try {
+            GameState result = apiInstance.gameGameIdPlaceTilePost(body, gameId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling DefaultApi#gameGameIdPlaceTilePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+
+                          <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-android">
+                            <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.DefaultApi;
+
+public class DefaultApiExample {
+
+    public static void main(String[] args) {
+        DefaultApi apiInstance = new DefaultApi();
+        PlaceTileRequest body = ; // PlaceTileRequest | 
+        String gameId = gameId_example; // String | ID of the game
+        try {
+            GameState result = apiInstance.gameGameIdPlaceTilePost(body, gameId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling DefaultApi#gameGameIdPlaceTilePost");
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+                          </div>
+  <!--
+  <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-groovy">
+  <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+  </div> -->
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">Configuration *apiConfig = [Configuration sharedConfig];
+PlaceTileRequest *body = ; // 
+String *gameId = gameId_example; // ID of the game
+
+DefaultApi *apiInstance = [[DefaultApi alloc] init];
+
+// Place a tile on the board
+[apiInstance gameGameIdPlaceTilePostWith:body
+    gameId:gameId
+              completionHandler: ^(GameState output, NSError* error) {
+                            if (output) {
+                                NSLog(@"%@", output);
+                            }
+                            if (error) {
+                                NSLog(@"Error: %@", error);
+                            }
+                        }];
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
+var defaultClient = CarcassonneGameApi.ApiClient.instance;
+
+
+var api = new CarcassonneGameApi.DefaultApi()
+var body = ; // {{PlaceTileRequest}} 
+var gameId = gameId_example; // {{String}} ID of the game
+
+var callback = function(error, data, response) {
+  if (error) {
+    console.error(error);
+  } else {
+    console.log('API called successfully. Returned data: ' + data);
+  }
+};
+api.gameGameIdPlaceTilePost(bodygameId, callback);
+</code></pre>
+                            </div>
+
+                            <!--<div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-angular">
+              <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
+            </div>-->
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-csharp">
+                              <pre class="prettyprint"><code class="language-cs">using System;
+using System.Diagnostics;
+using IO.Swagger.Api;
+using IO.Swagger.Client;
+using IO.Swagger.Model;
+
+namespace Example
+{
+    public class gameGameIdPlaceTilePostExample
+    {
+        public void main()
+        {
+
+
+            var apiInstance = new DefaultApi();
+            var body = new PlaceTileRequest(); // PlaceTileRequest | 
+            var gameId = gameId_example;  // String | ID of the game
+
+            try
+            {
+                // Place a tile on the board
+                GameState result = apiInstance.gameGameIdPlaceTilePost(body, gameId);
+                Debug.WriteLine(result);
+            }
+            catch (Exception e)
+            {
+                Debug.Print("Exception when calling DefaultApi.gameGameIdPlaceTilePost: " + e.Message );
+            }
+        }
+    }
+}
+</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-php">
+                              <pre class="prettyprint"><code class="language-php"><&#63;php
+require_once(__DIR__ . '/vendor/autoload.php');
+
+
+$api_instance = new Swagger\Client\ApiDefaultApi();
+$body = ; // PlaceTileRequest | 
+$gameId = gameId_example; // String | ID of the game
+
+try {
+    $result = $api_instance->gameGameIdPlaceTilePost($body, $gameId);
+    print_r($result);
+} catch (Exception $e) {
+    echo 'Exception when calling DefaultApi->gameGameIdPlaceTilePost: ', $e->getMessage(), PHP_EOL;
+}
+?></code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-perl">
+                              <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
+use WWW::SwaggerClient::Configuration;
+use WWW::SwaggerClient::DefaultApi;
+
+
+my $api_instance = WWW::SwaggerClient::DefaultApi->new();
+my $body = WWW::SwaggerClient::Object::PlaceTileRequest->new(); # PlaceTileRequest | 
+my $gameId = gameId_example; # String | ID of the game
+
+eval { 
+    my $result = $api_instance->gameGameIdPlaceTilePost(body => $body, gameId => $gameId);
+    print Dumper($result);
+};
+if ($@) {
+    warn "Exception when calling DefaultApi->gameGameIdPlaceTilePost: $@\n";
+}</code></pre>
+                            </div>
+
+                            <div class="tab-pane" id="examples-Default-gameGameIdPlaceTilePost-0-python">
+                              <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
+import time
+import swagger_client
+from swagger_client.rest import ApiException
+from pprint import pprint
+
+
+# create an instance of the API class
+api_instance = swagger_client.DefaultApi()
+body =  # PlaceTileRequest | 
+gameId = gameId_example # String | ID of the game
+
+try: 
+    # Place a tile on the board
+    api_response = api_instance.game_game_id_place_tile_post(body, gameId)
+    pprint(api_response)
+except ApiException as e:
+    print("Exception when calling DefaultApi->gameGameIdPlaceTilePost: %s\n" % e)</code></pre>
+                            </div>
+                          </div>
+
+                          <h2>Parameters</h2>
+
+                            <div class="methodsubtabletitle">Path parameters</div>
+                            <table id="methodsubtable">
+                                <tr>
+                                  <th width="150px">Name</th>
+                                  <th>Description</th>
+                                </tr>
+                                  <tr><td style="width:150px;">gameId*</td>
+                                  <td>
+                                  
+                                  
+                                      <div id="d2e199_gameGameIdPlaceTilePost_gameId">
+                                          <div class="json-schema-view">
+                                              <div class="primitive">
+                                                  <span class="type">
+                                                      String
+                                                  </span>
+                                  
+                                                      <div class="inner description">
+                                                          ID of the game
+                                                      </div>
+                                              </div>
+                                                  <div class="inner required">
+                                                      Required
+                                                  </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  </tr>
+                            </table>
+
+
+                            <div class="methodsubtabletitle">Body parameters</div>
+                            <table id="methodsubtable">
+                              <tr>
+                                <th width="150px">Name</th>
+                                <th>Description</th>
+                              </tr>
+                                <tr><td style="width:150px;">body <span style="color:red;">*</span></td>
+                                <td>
+                                
+                                
+                                <script>
+                                $(document).ready(function() {
+                                  var schemaWrapper = {
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/PlaceTileRequest"
+      }
+    }
+  },
+  "required" : true
+};
+                                  var schema = schemaWrapper.content["application/json"].schema;
+                                  if (schema.$ref != null) {
+                                    schema = defsParser.$refs.get(schema.$ref);
+                                  } else {
+                                    schemaWrapper.components = {};
+                                    schemaWrapper.components.schemas = Object.assign({}, defs);
+                                    $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                      console.log(err);
+                                    });
+                                  }
+                                
+                                  var view = new JSONSchemaView(schema,2,{isBodyParam: true});
+                                  var result = $('#d2e199_gameGameIdPlaceTilePost_body');
+                                  result.empty();
+                                  result.append(view.render());
+                                });
+                                </script>
+                                <div id="d2e199_gameGameIdPlaceTilePost_body"></div>
+                                </td>
+                                </tr>
+                            </table>
+
+
+
+                          <h2>Responses</h2>
+                            <h3> Status: 200 - Tile successfully placed </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceTilePost-200-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceTilePost-200-schema">
+                                  <div id='responses-gameGameIdPlaceTilePost-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Tile successfully placed",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/GameState"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceTilePost-200-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceTilePost-200-schema-200');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceTilePost-200-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 400 - Invalid tile placement </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceTilePost-400-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceTilePost-400-schema">
+                                  <div id='responses-gameGameIdPlaceTilePost-400-schema-400' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Invalid tile placement",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceTilePost-400-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceTilePost-400-schema-400');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceTilePost-400-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 403 - Not the player&#x27;s turn </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceTilePost-403-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceTilePost-403-schema">
+                                  <div id='responses-gameGameIdPlaceTilePost-403-schema-403' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Not the player's turn",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceTilePost-403-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceTilePost-403-schema-403');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceTilePost-403-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 404 - Game or tile not found </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdPlaceTilePost-404-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdPlaceTilePost-404-schema">
+                                  <div id='responses-gameGameIdPlaceTilePost-404-schema-404' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Game or tile not found",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdPlaceTilePost-404-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdPlaceTilePost-404-schema-404');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdPlaceTilePost-404-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                        </article>
+                      </div>
+                      <hr>
+                    <div id="api-Default-gameGameIdStartPost">
+                      <article id="api-Default-gameGameIdStartPost-0" data-group="User" data-name="gameGameIdStartPost" data-version="0">
+                        <div class="pull-left">
+                          <h1>gameGameIdStartPost</h1>
+                          <p>Start the game</p>
+                        </div>
+                        <div class="pull-right"></div>
+                        <div class="clearfix"></div>
+                        <p></p>
+                        <p class="marked">Initializes the game state, shuffles the deck, and assigns the first player</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game/{gameId}/start</span></code></pre>
@@ -1741,7 +3509,7 @@ public class DefaultApiExample {
 
 
         DefaultApi apiInstance = new DefaultApi();
-        String gameId = gameId_example; // String | Идентификатор игры
+        String gameId = gameId_example; // String | ID of the game
         try {
             GameState result = apiInstance.gameGameIdStartPost(gameId);
             System.out.println(result);
@@ -1760,7 +3528,7 @@ public class DefaultApiExample {
 
     public static void main(String[] args) {
         DefaultApi apiInstance = new DefaultApi();
-        String gameId = gameId_example; // String | Идентификатор игры
+        String gameId = gameId_example; // String | ID of the game
         try {
             GameState result = apiInstance.gameGameIdStartPost(gameId);
             System.out.println(result);
@@ -1777,11 +3545,11 @@ public class DefaultApiExample {
   </div> -->
                             <div class="tab-pane" id="examples-Default-gameGameIdStartPost-0-objc">
                               <pre class="prettyprint"><code class="language-cpp">Configuration *apiConfig = [Configuration sharedConfig];
-String *gameId = gameId_example; // Идентификатор игры
+String *gameId = gameId_example; // ID of the game
 
 DefaultApi *apiInstance = [[DefaultApi alloc] init];
 
-// Старт игры
+// Start the game
 [apiInstance gameGameIdStartPostWith:gameId
               completionHandler: ^(GameState output, NSError* error) {
                             if (output) {
@@ -1795,12 +3563,12 @@ DefaultApi *apiInstance = [[DefaultApi alloc] init];
                             </div>
 
                             <div class="tab-pane" id="examples-Default-gameGameIdStartPost-0-javascript">
-                              <pre class="prettyprint"><code class="language-js">var CarcassonneMvpApi = require('carcassonne_mvp_api');
-var defaultClient = CarcassonneMvpApi.ApiClient.instance;
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
+var defaultClient = CarcassonneGameApi.ApiClient.instance;
 
 
-var api = new CarcassonneMvpApi.DefaultApi()
-var gameId = gameId_example; // {{String}} Идентификатор игры
+var api = new CarcassonneGameApi.DefaultApi()
+var gameId = gameId_example; // {{String}} ID of the game
 
 var callback = function(error, data, response) {
   if (error) {
@@ -1832,11 +3600,11 @@ namespace Example
 
 
             var apiInstance = new DefaultApi();
-            var gameId = gameId_example;  // String | Идентификатор игры
+            var gameId = gameId_example;  // String | ID of the game
 
             try
             {
-                // Старт игры
+                // Start the game
                 GameState result = apiInstance.gameGameIdStartPost(gameId);
                 Debug.WriteLine(result);
             }
@@ -1856,7 +3624,7 @@ require_once(__DIR__ . '/vendor/autoload.php');
 
 
 $api_instance = new Swagger\Client\ApiDefaultApi();
-$gameId = gameId_example; // String | Идентификатор игры
+$gameId = gameId_example; // String | ID of the game
 
 try {
     $result = $api_instance->gameGameIdStartPost($gameId);
@@ -1874,7 +3642,7 @@ use WWW::SwaggerClient::DefaultApi;
 
 
 my $api_instance = WWW::SwaggerClient::DefaultApi->new();
-my $gameId = gameId_example; # String | Идентификатор игры
+my $gameId = gameId_example; # String | ID of the game
 
 eval { 
     my $result = $api_instance->gameGameIdStartPost(gameId => $gameId);
@@ -1895,10 +3663,10 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.DefaultApi()
-gameId = gameId_example # String | Идентификатор игры
+gameId = gameId_example # String | ID of the game
 
 try: 
-    # Старт игры
+    # Start the game
     api_response = api_instance.game_game_id_start_post(gameId)
     pprint(api_response)
 except ApiException as e:
@@ -1926,7 +3694,7 @@ except ApiException as e:
                                                   </span>
                                   
                                                       <div class="inner description">
-                                                          Идентификатор игры
+                                                          ID of the game
                                                       </div>
                                               </div>
                                                   <div class="inner required">
@@ -1943,7 +3711,7 @@ except ApiException as e:
 
 
                           <h2>Responses</h2>
-                            <h3> Status: 200 - Игра успешно запущена </h3>
+                            <h3> Status: 200 - Game successfully started </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -1958,7 +3726,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Игра успешно запущена",
+  "description" : "Game successfully started",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -1991,7 +3759,7 @@ except ApiException as e:
                                 </div>
                             </div>
 
-                            <h3> Status: 400 - Игра уже запущена или неверный запрос </h3>
+                            <h3> Status: 400 - Game already started or invalid request </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -2006,7 +3774,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Игра уже запущена или неверный запрос",
+  "description" : "Game already started or invalid request",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -2039,7 +3807,55 @@ except ApiException as e:
                                 </div>
                             </div>
 
-                            <h3> Status: 404 - Игра не найдена </h3>
+                            <h3> Status: 403 - Only the host can start the game </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameGameIdStartPost-403-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameGameIdStartPost-403-schema">
+                                  <div id='responses-gameGameIdStartPost-403-schema-403' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Only the host can start the game",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameGameIdStartPost-403-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameGameIdStartPost-403-schema-403');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameGameIdStartPost-403-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 404 - Game not found </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -2054,7 +3870,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Игра не найдена",
+  "description" : "Game not found",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -2090,46 +3906,44 @@ except ApiException as e:
                         </article>
                       </div>
                       <hr>
-                    <div id="api-Default-gameGameIdTurnPost">
-                      <article id="api-Default-gameGameIdTurnPost-0" data-group="User" data-name="gameGameIdTurnPost" data-version="0">
+                    <div id="api-Default-gamePost">
+                      <article id="api-Default-gamePost-0" data-group="User" data-name="gamePost" data-version="0">
                         <div class="pull-left">
-                          <h1>gameGameIdTurnPost</h1>
-                          <p>Совершить ход</p>
+                          <h1>gamePost</h1>
+                          <p>Create a new game</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">Выполняет действия игрока за один запрос: устанавливает тайл (при необходимости), по желанию ставит мип и может завершать ход. Идентификатор игрока извлекается из JWT, чтобы избежать мошенничества.
-</p>
+                        <p class="marked">Creates a new game and returns a game ID and join code</p>
                         <p></p>
                         <br />
-                        <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game/{gameId}/turn</span></code></pre>
+                        <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game</span></code></pre>
                         <p>
                           <h3>Usage and SDK Samples</h3>
                         </p>
                         <ul class="nav nav-tabs nav-tabs-examples">
-                          <li class="active"><a href="#examples-Default-gameGameIdTurnPost-0-curl">Curl</a></li>
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-java">Java</a></li>
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-android">Android</a></li>
-                          <!--<li class=""><a href="#examples-Default-gameGameIdTurnPost-0-groovy">Groovy</a></li>-->
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-objc">Obj-C</a></li>
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-javascript">JavaScript</a></li>
-                          <!--<li class=""><a href="#examples-Default-gameGameIdTurnPost-0-angular">Angular</a></li>-->
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-csharp">C#</a></li>
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-php">PHP</a></li>
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-perl">Perl</a></li>
-                          <li class=""><a href="#examples-Default-gameGameIdTurnPost-0-python">Python</a></li>
+                          <li class="active"><a href="#examples-Default-gamePost-0-curl">Curl</a></li>
+                          <li class=""><a href="#examples-Default-gamePost-0-java">Java</a></li>
+                          <li class=""><a href="#examples-Default-gamePost-0-android">Android</a></li>
+                          <!--<li class=""><a href="#examples-Default-gamePost-0-groovy">Groovy</a></li>-->
+                          <li class=""><a href="#examples-Default-gamePost-0-objc">Obj-C</a></li>
+                          <li class=""><a href="#examples-Default-gamePost-0-javascript">JavaScript</a></li>
+                          <!--<li class=""><a href="#examples-Default-gamePost-0-angular">Angular</a></li>-->
+                          <li class=""><a href="#examples-Default-gamePost-0-csharp">C#</a></li>
+                          <li class=""><a href="#examples-Default-gamePost-0-php">PHP</a></li>
+                          <li class=""><a href="#examples-Default-gamePost-0-perl">Perl</a></li>
+                          <li class=""><a href="#examples-Default-gamePost-0-python">Python</a></li>
                         </ul>
 
                         <div class="tab-content">
-                          <div class="tab-pane active" id="examples-Default-gameGameIdTurnPost-0-curl">
+                          <div class="tab-pane active" id="examples-Default-gamePost-0-curl">
                            <pre class="prettyprint"><code class="language-bsh">curl -X POST\
- -H "Authorization: Bearer [[accessToken]]"\
 -H "Accept: application/json"\
 -H "Content-Type: application/json"\
-"https://api.example.com/game/{gameId}/turn"</code></pre>
+"https://api.example.com/game"</code></pre>
                           </div>
-                          <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-java">
+                          <div class="tab-pane" id="examples-Default-gamePost-0-java">
                             <pre class="prettyprint"><code class="language-java">import io.swagger.client.*;
 import io.swagger.client.auth.*;
 import io.swagger.client.model.*;
@@ -2141,57 +3955,50 @@ import java.util.*;
 public class DefaultApiExample {
 
     public static void main(String[] args) {
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-
-
+        
         DefaultApi apiInstance = new DefaultApi();
-        TurnRequest body = ; // TurnRequest | 
-        String gameId = gameId_example; // String | Идентификатор игры
+        CreateGameRequest body = ; // CreateGameRequest | 
         try {
-            GameState result = apiInstance.gameGameIdTurnPost(body, gameId);
+            CreateGameResponse result = apiInstance.gamePost(body);
             System.out.println(result);
         } catch (ApiException e) {
-            System.err.println("Exception when calling DefaultApi#gameGameIdTurnPost");
+            System.err.println("Exception when calling DefaultApi#gamePost");
             e.printStackTrace();
         }
     }
 }</code></pre>
                           </div>
 
-                          <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-android">
+                          <div class="tab-pane" id="examples-Default-gamePost-0-android">
                             <pre class="prettyprint"><code class="language-java">import io.swagger.client.api.DefaultApi;
 
 public class DefaultApiExample {
 
     public static void main(String[] args) {
         DefaultApi apiInstance = new DefaultApi();
-        TurnRequest body = ; // TurnRequest | 
-        String gameId = gameId_example; // String | Идентификатор игры
+        CreateGameRequest body = ; // CreateGameRequest | 
         try {
-            GameState result = apiInstance.gameGameIdTurnPost(body, gameId);
+            CreateGameResponse result = apiInstance.gamePost(body);
             System.out.println(result);
         } catch (ApiException e) {
-            System.err.println("Exception when calling DefaultApi#gameGameIdTurnPost");
+            System.err.println("Exception when calling DefaultApi#gamePost");
             e.printStackTrace();
         }
     }
 }</code></pre>
                           </div>
   <!--
-  <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-groovy">
+  <div class="tab-pane" id="examples-Default-gamePost-0-groovy">
   <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
   </div> -->
-                            <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-objc">
-                              <pre class="prettyprint"><code class="language-cpp">Configuration *apiConfig = [Configuration sharedConfig];
-TurnRequest *body = ; // 
-String *gameId = gameId_example; // Идентификатор игры
+                            <div class="tab-pane" id="examples-Default-gamePost-0-objc">
+                              <pre class="prettyprint"><code class="language-cpp">CreateGameRequest *body = ; // 
 
 DefaultApi *apiInstance = [[DefaultApi alloc] init];
 
-// Совершить ход
-[apiInstance gameGameIdTurnPostWith:body
-    gameId:gameId
-              completionHandler: ^(GameState output, NSError* error) {
+// Create a new game
+[apiInstance gamePostWith:body
+              completionHandler: ^(CreateGameResponse output, NSError* error) {
                             if (output) {
                                 NSLog(@"%@", output);
                             }
@@ -2202,14 +4009,11 @@ DefaultApi *apiInstance = [[DefaultApi alloc] init];
 </code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-javascript">
-                              <pre class="prettyprint"><code class="language-js">var CarcassonneMvpApi = require('carcassonne_mvp_api');
-var defaultClient = CarcassonneMvpApi.ApiClient.instance;
+                            <div class="tab-pane" id="examples-Default-gamePost-0-javascript">
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
 
-
-var api = new CarcassonneMvpApi.DefaultApi()
-var body = ; // {{TurnRequest}} 
-var gameId = gameId_example; // {{String}} Идентификатор игры
+var api = new CarcassonneGameApi.DefaultApi()
+var body = ; // {{CreateGameRequest}} 
 
 var callback = function(error, data, response) {
   if (error) {
@@ -2218,14 +4022,14 @@ var callback = function(error, data, response) {
     console.log('API called successfully. Returned data: ' + data);
   }
 };
-api.gameGameIdTurnPost(bodygameId, callback);
+api.gamePost(body, callback);
 </code></pre>
                             </div>
 
-                            <!--<div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-angular">
+                            <!--<div class="tab-pane" id="examples-Default-gamePost-0-angular">
               <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
             </div>-->
-                            <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-csharp">
+                            <div class="tab-pane" id="examples-Default-gamePost-0-csharp">
                               <pre class="prettyprint"><code class="language-cs">using System;
 using System.Diagnostics;
 using IO.Swagger.Api;
@@ -2234,25 +4038,23 @@ using IO.Swagger.Model;
 
 namespace Example
 {
-    public class gameGameIdTurnPostExample
+    public class gamePostExample
     {
         public void main()
         {
 
-
             var apiInstance = new DefaultApi();
-            var body = new TurnRequest(); // TurnRequest | 
-            var gameId = gameId_example;  // String | Идентификатор игры
+            var body = new CreateGameRequest(); // CreateGameRequest | 
 
             try
             {
-                // Совершить ход
-                GameState result = apiInstance.gameGameIdTurnPost(body, gameId);
+                // Create a new game
+                CreateGameResponse result = apiInstance.gamePost(body);
                 Debug.WriteLine(result);
             }
             catch (Exception e)
             {
-                Debug.Print("Exception when calling DefaultApi.gameGameIdTurnPost: " + e.Message );
+                Debug.Print("Exception when calling DefaultApi.gamePost: " + e.Message );
             }
         }
     }
@@ -2260,96 +4062,61 @@ namespace Example
 </code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-php">
+                            <div class="tab-pane" id="examples-Default-gamePost-0-php">
                               <pre class="prettyprint"><code class="language-php"><&#63;php
 require_once(__DIR__ . '/vendor/autoload.php');
 
-
 $api_instance = new Swagger\Client\ApiDefaultApi();
-$body = ; // TurnRequest | 
-$gameId = gameId_example; // String | Идентификатор игры
+$body = ; // CreateGameRequest | 
 
 try {
-    $result = $api_instance->gameGameIdTurnPost($body, $gameId);
+    $result = $api_instance->gamePost($body);
     print_r($result);
 } catch (Exception $e) {
-    echo 'Exception when calling DefaultApi->gameGameIdTurnPost: ', $e->getMessage(), PHP_EOL;
+    echo 'Exception when calling DefaultApi->gamePost: ', $e->getMessage(), PHP_EOL;
 }
 ?></code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-perl">
+                            <div class="tab-pane" id="examples-Default-gamePost-0-perl">
                               <pre class="prettyprint"><code class="language-perl">use Data::Dumper;
 use WWW::SwaggerClient::Configuration;
 use WWW::SwaggerClient::DefaultApi;
 
-
 my $api_instance = WWW::SwaggerClient::DefaultApi->new();
-my $body = WWW::SwaggerClient::Object::TurnRequest->new(); # TurnRequest | 
-my $gameId = gameId_example; # String | Идентификатор игры
+my $body = WWW::SwaggerClient::Object::CreateGameRequest->new(); # CreateGameRequest | 
 
 eval { 
-    my $result = $api_instance->gameGameIdTurnPost(body => $body, gameId => $gameId);
+    my $result = $api_instance->gamePost(body => $body);
     print Dumper($result);
 };
 if ($@) {
-    warn "Exception when calling DefaultApi->gameGameIdTurnPost: $@\n";
+    warn "Exception when calling DefaultApi->gamePost: $@\n";
 }</code></pre>
                             </div>
 
-                            <div class="tab-pane" id="examples-Default-gameGameIdTurnPost-0-python">
+                            <div class="tab-pane" id="examples-Default-gamePost-0-python">
                               <pre class="prettyprint"><code class="language-python">from __future__ import print_statement
 import time
 import swagger_client
 from swagger_client.rest import ApiException
 from pprint import pprint
 
-
 # create an instance of the API class
 api_instance = swagger_client.DefaultApi()
-body =  # TurnRequest | 
-gameId = gameId_example # String | Идентификатор игры
+body =  # CreateGameRequest | 
 
 try: 
-    # Совершить ход
-    api_response = api_instance.game_game_id_turn_post(body, gameId)
+    # Create a new game
+    api_response = api_instance.game_post(body)
     pprint(api_response)
 except ApiException as e:
-    print("Exception when calling DefaultApi->gameGameIdTurnPost: %s\n" % e)</code></pre>
+    print("Exception when calling DefaultApi->gamePost: %s\n" % e)</code></pre>
                             </div>
                           </div>
 
                           <h2>Parameters</h2>
 
-                            <div class="methodsubtabletitle">Path parameters</div>
-                            <table id="methodsubtable">
-                                <tr>
-                                  <th width="150px">Name</th>
-                                  <th>Description</th>
-                                </tr>
-                                  <tr><td style="width:150px;">gameId*</td>
-                                  <td>
-                                  
-                                  
-                                      <div id="d2e199_gameGameIdTurnPost_gameId">
-                                          <div class="json-schema-view">
-                                              <div class="primitive">
-                                                  <span class="type">
-                                                      String
-                                                  </span>
-                                  
-                                                      <div class="inner description">
-                                                          Идентификатор игры
-                                                      </div>
-                                              </div>
-                                                  <div class="inner required">
-                                                      Required
-                                                  </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  </tr>
-                            </table>
 
 
                             <div class="methodsubtabletitle">Body parameters</div>
@@ -2368,7 +4135,7 @@ except ApiException as e:
   "content" : {
     "application/json" : {
       "schema" : {
-        "$ref" : "#/components/schemas/TurnRequest"
+        "$ref" : "#/components/schemas/CreateGameRequest"
       }
     }
   },
@@ -2386,12 +4153,12 @@ except ApiException as e:
                                   }
                                 
                                   var view = new JSONSchemaView(schema,2,{isBodyParam: true});
-                                  var result = $('#d2e199_gameGameIdTurnPost_body');
+                                  var result = $('#d2e199_gamePost_body');
                                   result.empty();
                                   result.append(view.render());
                                 });
                                 </script>
-                                <div id="d2e199_gameGameIdTurnPost_body"></div>
+                                <div id="d2e199_gamePost_body"></div>
                                 </td>
                                 </tr>
                             </table>
@@ -2399,26 +4166,26 @@ except ApiException as e:
 
 
                           <h2>Responses</h2>
-                            <h3> Status: 200 - Ход успешно совершен, возвращает обновлённое состояние игры </h3>
+                            <h3> Status: 200 - Game successfully created </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
-                                  <a data-toggle="tab" href="#responses-gameGameIdTurnPost-200-schema">Schema</a>
+                                  <a data-toggle="tab" href="#responses-gamePost-200-schema">Schema</a>
                                 </li>
 
                             </ul>
 
                             <div class="tab-content" style='margin-bottom: 10px;'>
-                                <div class="tab-pane active" id="responses-gameGameIdTurnPost-200-schema">
-                                  <div id='responses-gameGameIdTurnPost-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                <div class="tab-pane active" id="responses-gamePost-200-schema">
+                                  <div id='responses-gamePost-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Ход успешно совершен, возвращает обновлённое состояние игры",
+  "description" : "Game successfully created",
   "content" : {
     "application/json" : {
       "schema" : {
-        "$ref" : "#/components/schemas/GameState"
+        "$ref" : "#/components/schemas/CreateGameResponse"
       }
     }
   }
@@ -2436,33 +4203,33 @@ except ApiException as e:
 
                                         //console.log(JSON.stringify(schema));
                                         var view = new JSONSchemaView(schema, 3);
-                                        $('#responses-gameGameIdTurnPost-200-schema-data').val(stringify(schema));
-                                        var result = $('#responses-gameGameIdTurnPost-200-schema-200');
+                                        $('#responses-gamePost-200-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gamePost-200-schema-200');
                                         result.empty();
                                         result.append(view.render());
                                       });
                                     </script>
                                   </div>
-                                  <input id='responses-gameGameIdTurnPost-200-schema-data' type='hidden' value=''></input>
+                                  <input id='responses-gamePost-200-schema-data' type='hidden' value=''></input>
                                 </div>
                             </div>
 
-                            <h3> Status: 400 - Некорректные данные или невозможно выполнить ход </h3>
+                            <h3> Status: 400 - Invalid request </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
-                                  <a data-toggle="tab" href="#responses-gameGameIdTurnPost-400-schema">Schema</a>
+                                  <a data-toggle="tab" href="#responses-gamePost-400-schema">Schema</a>
                                 </li>
 
                             </ul>
 
                             <div class="tab-content" style='margin-bottom: 10px;'>
-                                <div class="tab-pane active" id="responses-gameGameIdTurnPost-400-schema">
-                                  <div id='responses-gameGameIdTurnPost-400-schema-400' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                <div class="tab-pane active" id="responses-gamePost-400-schema">
+                                  <div id='responses-gamePost-400-schema-400' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Некорректные данные или невозможно выполнить ход",
+  "description" : "Invalid request",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -2484,62 +4251,14 @@ except ApiException as e:
 
                                         //console.log(JSON.stringify(schema));
                                         var view = new JSONSchemaView(schema, 3);
-                                        $('#responses-gameGameIdTurnPost-400-schema-data').val(stringify(schema));
-                                        var result = $('#responses-gameGameIdTurnPost-400-schema-400');
+                                        $('#responses-gamePost-400-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gamePost-400-schema-400');
                                         result.empty();
                                         result.append(view.render());
                                       });
                                     </script>
                                   </div>
-                                  <input id='responses-gameGameIdTurnPost-400-schema-data' type='hidden' value=''></input>
-                                </div>
-                            </div>
-
-                            <h3> Status: 404 - Игра или игрок не найдены </h3>
-
-                            <ul class="nav nav-tabs nav-tabs-examples" >
-                                <li class="active">
-                                  <a data-toggle="tab" href="#responses-gameGameIdTurnPost-404-schema">Schema</a>
-                                </li>
-
-                            </ul>
-
-                            <div class="tab-content" style='margin-bottom: 10px;'>
-                                <div class="tab-pane active" id="responses-gameGameIdTurnPost-404-schema">
-                                  <div id='responses-gameGameIdTurnPost-404-schema-404' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
-                                    <script>
-                                      $(document).ready(function() {
-                                        var schemaWrapper = {
-  "description" : "Игра или игрок не найдены",
-  "content" : {
-    "application/json" : {
-      "schema" : {
-        "$ref" : "#/components/schemas/ErrorResponse"
-      }
-    }
-  }
-};
-                                        var schema = schemaWrapper.content["application/json"].schema;
-                                        if (schema.$ref != null) {
-                                          schema = defsParser.$refs.get(schema.$ref);
-                                        } else {
-                                          schemaWrapper.components = {};
-                                          schemaWrapper.components.schemas = Object.assign({}, defs);
-                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
-                                            console.log(err);
-                                          });
-                                        }
-
-                                        //console.log(JSON.stringify(schema));
-                                        var view = new JSONSchemaView(schema, 3);
-                                        $('#responses-gameGameIdTurnPost-404-schema-data').val(stringify(schema));
-                                        var result = $('#responses-gameGameIdTurnPost-404-schema-404');
-                                        result.empty();
-                                        result.append(view.render());
-                                      });
-                                    </script>
-                                  </div>
-                                  <input id='responses-gameGameIdTurnPost-404-schema-data' type='hidden' value=''></input>
+                                  <input id='responses-gamePost-400-schema-data' type='hidden' value=''></input>
                                 </div>
                             </div>
 
@@ -2550,12 +4269,12 @@ except ApiException as e:
                       <article id="api-Default-gameTakeCardPost-0" data-group="User" data-name="gameTakeCardPost" data-version="0">
                         <div class="pull-left">
                           <h1>gameTakeCardPost</h1>
-                          <p>Взять новую карточку из стека</p>
+                          <p>Draw a card from the deck</p>
                         </div>
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked">Возвращает информацию о взятой карточке, обновляет состояние руки игрока</p>
+                        <p class="marked">Draws a new tile from the deck for the current player</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/game/takeCard</span></code></pre>
@@ -2600,7 +4319,7 @@ public class DefaultApiExample {
 
 
         DefaultApi apiInstance = new DefaultApi();
-        Object body = ; // Object | 
+        TakeCardRequest body = ; // TakeCardRequest | 
         try {
             TakeCardResponse result = apiInstance.gameTakeCardPost(body);
             System.out.println(result);
@@ -2619,7 +4338,7 @@ public class DefaultApiExample {
 
     public static void main(String[] args) {
         DefaultApi apiInstance = new DefaultApi();
-        Object body = ; // Object | 
+        TakeCardRequest body = ; // TakeCardRequest | 
         try {
             TakeCardResponse result = apiInstance.gameTakeCardPost(body);
             System.out.println(result);
@@ -2636,11 +4355,11 @@ public class DefaultApiExample {
   </div> -->
                             <div class="tab-pane" id="examples-Default-gameTakeCardPost-0-objc">
                               <pre class="prettyprint"><code class="language-cpp">Configuration *apiConfig = [Configuration sharedConfig];
-Object *body = ; //  (optional)
+TakeCardRequest *body = ; // 
 
 DefaultApi *apiInstance = [[DefaultApi alloc] init];
 
-// Взять новую карточку из стека
+// Draw a card from the deck
 [apiInstance gameTakeCardPostWith:body
               completionHandler: ^(TakeCardResponse output, NSError* error) {
                             if (output) {
@@ -2654,14 +4373,13 @@ DefaultApi *apiInstance = [[DefaultApi alloc] init];
                             </div>
 
                             <div class="tab-pane" id="examples-Default-gameTakeCardPost-0-javascript">
-                              <pre class="prettyprint"><code class="language-js">var CarcassonneMvpApi = require('carcassonne_mvp_api');
-var defaultClient = CarcassonneMvpApi.ApiClient.instance;
+                              <pre class="prettyprint"><code class="language-js">var CarcassonneGameApi = require('carcassonne_game_api');
+var defaultClient = CarcassonneGameApi.ApiClient.instance;
 
 
-var api = new CarcassonneMvpApi.DefaultApi()
-var opts = { 
-  'body':  // {{Object}} 
-};
+var api = new CarcassonneGameApi.DefaultApi()
+var body = ; // {{TakeCardRequest}} 
+
 var callback = function(error, data, response) {
   if (error) {
     console.error(error);
@@ -2669,7 +4387,7 @@ var callback = function(error, data, response) {
     console.log('API called successfully. Returned data: ' + data);
   }
 };
-api.gameTakeCardPost(opts, callback);
+api.gameTakeCardPost(body, callback);
 </code></pre>
                             </div>
 
@@ -2692,11 +4410,11 @@ namespace Example
 
 
             var apiInstance = new DefaultApi();
-            var body = new Object(); // Object |  (optional) 
+            var body = new TakeCardRequest(); // TakeCardRequest | 
 
             try
             {
-                // Взять новую карточку из стека
+                // Draw a card from the deck
                 TakeCardResponse result = apiInstance.gameTakeCardPost(body);
                 Debug.WriteLine(result);
             }
@@ -2716,7 +4434,7 @@ require_once(__DIR__ . '/vendor/autoload.php');
 
 
 $api_instance = new Swagger\Client\ApiDefaultApi();
-$body = ; // Object | 
+$body = ; // TakeCardRequest | 
 
 try {
     $result = $api_instance->gameTakeCardPost($body);
@@ -2734,7 +4452,7 @@ use WWW::SwaggerClient::DefaultApi;
 
 
 my $api_instance = WWW::SwaggerClient::DefaultApi->new();
-my $body = WWW::SwaggerClient::Object::Object->new(); # Object | 
+my $body = WWW::SwaggerClient::Object::TakeCardRequest->new(); # TakeCardRequest | 
 
 eval { 
     my $result = $api_instance->gameTakeCardPost(body => $body);
@@ -2755,11 +4473,11 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.DefaultApi()
-body =  # Object |  (optional)
+body =  # TakeCardRequest | 
 
 try: 
-    # Взять новую карточку из стека
-    api_response = api_instance.game_take_card_post(body=body)
+    # Draw a card from the deck
+    api_response = api_instance.game_take_card_post(body)
     pprint(api_response)
 except ApiException as e:
     print("Exception when calling DefaultApi->gameTakeCardPost: %s\n" % e)</code></pre>
@@ -2776,7 +4494,7 @@ except ApiException as e:
                                 <th width="150px">Name</th>
                                 <th>Description</th>
                               </tr>
-                                <tr><td style="width:150px;">body </td>
+                                <tr><td style="width:150px;">body <span style="color:red;">*</span></td>
                                 <td>
                                 
                                 
@@ -2786,18 +4504,11 @@ except ApiException as e:
   "content" : {
     "application/json" : {
       "schema" : {
-        "type" : "object",
-        "properties" : {
-          "gameId" : {
-            "type" : "string",
-            "description" : "Идентификатор игры"
-          }
-        },
-        "description" : "Пустой объект или доп. поля по желанию (но не playerId), т.к. playerId берётся из JWT.\n"
+        "$ref" : "#/components/schemas/TakeCardRequest"
       }
     }
   },
-  "required" : false
+  "required" : true
 };
                                   var schema = schemaWrapper.content["application/json"].schema;
                                   if (schema.$ref != null) {
@@ -2824,7 +4535,7 @@ except ApiException as e:
 
 
                           <h2>Responses</h2>
-                            <h3> Status: 200 - Карточка успешно взята </h3>
+                            <h3> Status: 200 - Card successfully drawn </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -2839,7 +4550,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Карточка успешно взята",
+  "description" : "Card successfully drawn",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -2872,7 +4583,7 @@ except ApiException as e:
                                 </div>
                             </div>
 
-                            <h3> Status: 400 - Некорректные данные </h3>
+                            <h3> Status: 400 - Invalid request </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -2887,7 +4598,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Некорректные данные",
+  "description" : "Invalid request",
   "content" : {
     "application/json" : {
       "schema" : {
@@ -2920,7 +4631,55 @@ except ApiException as e:
                                 </div>
                             </div>
 
-                            <h3> Status: 404 - Игра или игрок не найдены </h3>
+                            <h3> Status: 403 - Not the player&#x27;s turn </h3>
+
+                            <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-gameTakeCardPost-403-schema">Schema</a>
+                                </li>
+
+                            </ul>
+
+                            <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-gameTakeCardPost-403-schema">
+                                  <div id='responses-gameTakeCardPost-403-schema-403' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "Not the player's turn",
+  "content" : {
+    "application/json" : {
+      "schema" : {
+        "$ref" : "#/components/schemas/ErrorResponse"
+      }
+    }
+  }
+};
+                                        var schema = schemaWrapper.content["application/json"].schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.components = {};
+                                          schemaWrapper.components.schemas = Object.assign({}, defs);
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-gameTakeCardPost-403-schema-data').val(stringify(schema));
+                                        var result = $('#responses-gameTakeCardPost-403-schema-403');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-gameTakeCardPost-403-schema-data' type='hidden' value=''></input>
+                                </div>
+                            </div>
+
+                            <h3> Status: 404 - Game or player not found </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -2935,7 +4694,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "Игра или игрок не найдены",
+  "description" : "Game or player not found",
   "content" : {
     "application/json" : {
       "schema" : {

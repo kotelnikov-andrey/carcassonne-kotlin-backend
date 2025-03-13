@@ -84,6 +84,11 @@ ktor {
     }
 }
 
+// Task to clean the generated directory
+tasks.register<Delete>("cleanGenerated") {
+    delete("$buildDir/generated")
+}
+
 // OpenAPI Generator configuration
 openApiGenerate {
     generatorName.set("kotlin")
@@ -103,11 +108,17 @@ openApiGenerate {
         "models" to "",    // Generate models
         "modelDocs" to "false",
         "modelTests" to "false",
-        "apiTests" to "false"
+        "apiTests" to "false",
+        "modelPackage" to "org.example.model.generated" // Force the model package
     ))
     typeMappings.set(mapOf(
         "DateTime" to "java.time.OffsetDateTime"
     ))
+}
+
+// Make openApiGenerate depend on cleanGenerated
+tasks.named("openApiGenerate") {
+    dependsOn("cleanGenerated")
 }
 
 // Make compileKotlin depend on openApiGenerate

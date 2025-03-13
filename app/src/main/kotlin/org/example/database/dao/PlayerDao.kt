@@ -1,7 +1,7 @@
 package org.example.database.dao
 
 import org.example.database.tables.PlayersTable
-import org.example.model.Player
+import org.example.model.generated.Player
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -27,14 +27,15 @@ class PlayerDao(id: EntityID<UUID>) : UUIDEntity(id) {
      * Convert DAO to API model
      */
     fun toPlayer(): Player {
-        return Player(
-            playerId = id.value.toString(),
-            name = name,
-            color = color,
-            meeples = meeples,
-            score = score,
-            isHost = isHost
-        )
+        val player = Player()
+        player.playerId = id.value.toString()
+        player.name = name
+        player.color = color
+        player.meeples = meeples
+        player.score = score
+        player.isHost = isHost
+        
+        return player
     }
 
     /**
