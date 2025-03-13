@@ -55,19 +55,9 @@ This commit includes:
 
 echo -e "${GREEN}Changes committed.${NC}"
 
-# Ask for remote repository URL
-echo ""
-echo -e "${BLUE}To create a pull request, you need to push to a remote repository.${NC}"
-read -p "Enter the remote repository URL (e.g., https://github.com/yourusername/carcassonne.git): " REMOTE_URL
-
-if [ -z "$REMOTE_URL" ]; then
-    echo -e "${RED}No remote URL provided. Skipping push.${NC}"
-    echo -e "${GREEN}Local Git repository has been set up with all changes committed.${NC}"
-    echo -e "You can manually push to a remote repository later with:"
-    echo -e "  git remote add origin YOUR_REMOTE_URL"
-    echo -e "  git push -u origin $BRANCH_NAME"
-    exit 0
-fi
+# Set the remote repository URL
+REMOTE_URL="https://github.com/kotelnikov-andrey/carcassonne.git"
+echo -e "${BLUE}Using remote repository: ${REMOTE_URL}${NC}"
 
 # Add remote repository
 echo -e "${BLUE}Adding remote repository...${NC}"
